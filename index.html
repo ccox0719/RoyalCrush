@@ -12,7 +12,7 @@
   *{box-sizing:border-box}
   body{
     margin:0; font:16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif;
-    background:var(--bg); color:var(--ink);
+    background:var(--bg); color:#e9eef6;
   }
   .wrap{max-width:760px;margin:0 auto;padding:18px}
   .card{
@@ -97,7 +97,8 @@
 
       <button class="btn green" data-delta="+1">+1</button>
       <button class="btn green" id="queenHeal">+3 (Queen)</button>
-      <button class="btn blue" id="applyPoison">Tick POI</button>
+      <!-- CHANGED: label & behavior to increment POI -->
+      <button class="btn blue" id="applyPoison">POI +1</button>
       <button class="btn ghost" id="undoBtn">Undo</button>
     </div>
 
@@ -146,7 +147,7 @@
       </div>
     </div>
 
-    <!-- Reset + Boss selection moved here -->
+    <!-- Reset + Boss selection -->
     <div class="row-tight" style="margin-top:12px; justify-content:space-between">
       <div class="hint">Boss ability reminders: Jack 25% +ATK2 • Queen 25% HEAL3 • King 20% purge POI • Joker 8–10 ATK×2</div>
       <button class="btn" id="resetBtn">Reset Boss</button>
@@ -203,7 +204,7 @@ const bosses = [
   {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:38}
 ];
 
-// defeat reward data (from your reference)
+// defeat reward data
 const rewardData = {
   jack:  {upgrade:5, tier:'Jack',  generics:['Training (ATK1 + HEAL1) 1X','Sprint (ATK2 + DMG1) 1X','Parry (IMM) 1X']},
   queen: {upgrade:6, tier:'Queen', generics:['Tactics (ATK2) 1X','Rally (ATK2 + HEAL1) 1X','Scout (ATK1) 1X']},
@@ -389,7 +390,7 @@ function showAbilityMsg(msg, color = '#cfe3ff') {
   els.abilityOut.style.color = color;
 }
 function bossAbilityCheck() {
-  const r = rollD12(); // also updates the D12 pill
+  const r = rollD12();
   if (state.bossId === 'jack') {
     if (r <= 3) showAbilityMsg('+2 ATK this turn', '#ffd38a');
     else showAbilityMsg('No effect', '#9ec5ff');
@@ -443,9 +444,7 @@ function hideRewardPrompt(){
 }
 
 // Mark Done / Close
-els.rwDone?.addEventListener('click', ()=>{
-  hideRewardPrompt();
-});
+els.rwDone?.addEventListener('click', ()=> hideRewardPrompt());
 els.rwClose?.addEventListener('click', hideRewardPrompt);
 
 /* ---------- UI setup ---------- */
@@ -470,7 +469,10 @@ function initControls(){
     });
   });
   els.queenHeal.addEventListener('click', ()=> adjustHP(+3));
-  els.applyPoison.addEventListener('click', tickPoison);
+
+  // CHANGED: Blue button now increments poison by +1
+  els.applyPoison.addEventListener('click', ()=> adjustPoison(+1));
+
   els.undoBtn.addEventListener('click', undo);
 
   els.applyMinus.addEventListener('click', ()=>{
