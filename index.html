@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Royal Crush — HP Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --muted:#222733; --ink:#e9eef6; --sub:#aab3c2;
+    --accent:#6ee7b7; --accent-2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font:16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif;
+    background:var(--bg); color:var(--ink);
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:18px}
+  .card{
+    background:linear-gradient(180deg, var(--panel), #131720);
+    border:1px solid #252a36; border-radius:16px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.35)
+  }
+  h1{font-size:20px;margin:0 0 12px; letter-spacing:.2px}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  .boss-btn{
+    flex:1 1 120px; padding:10px 12px; border-radius:12px; border:1px solid #2b3040;
+    background:#171b25; color:#e9eef6; cursor:pointer; text-align:left; position:relative;
+  }
+  .boss-btn.active{outline:2px solid var(--accent-2); background:#132032}
+  .boss-btn small{display:block; color:var(--sub)}
+  .panel{background:var(--muted); border-radius:12px; padding:12px}
+  .grid{display:grid; gap:10px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3, 1fr)}
+  .grid.cols-4{grid-template-columns:repeat(4, 1fr)}
+  .btn{
+    padding:12px; border-radius:12px; border:1px solid #2b3040; background:#151924; color:#e9eef6; cursor:pointer
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent}
+  .btn.red{background:#2a1215; border-color:#3a1a1e; color:#ffdada}
+  .btn.green{background:#0f2a1d; border-color:#17472f; color:#d7ffe9}
+  .btn.yellow{background:#2e2613; border-color:#463a16; color:#fff1c2}
+  .btn.blue{background:#14243b; border-color:#1e3554; color:#d9ecff}
+  .stat{display:flex; justify-content:space-between; align-items:center}
+  .stat .big{font-weight:700; font-size:28px}
+  .sub{color:var(--sub)}
+  .bar{height:14px; background:#0e1420; border:1px solid #283045; border-radius:999px; overflow:hidden}
+  .bar > span{display:block; height:100%; background:linear-gradient(90deg, #60a5fa, #34d399)}
+  .row-tight{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  input[type=number]{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2b3040; background:#0f131b; color:#e9eef6}
+  .hint{font-size:12px; color:#9fb0c7}
+  .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#141a24;border:1px solid #293143;color:#cfe3ff}
+  .footer{margin-top:16px; color:#93a0b3; font-size:12px}
+
+  /* Modal for defeat rewards */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:1000;
+  }
+  .modal{
+    width:min(560px, 96vw); background:#141823; border:1px solid #2a3344; border-radius:16px; padding:16px; box-shadow:0 16px 60px rgba(0,0,0,.55)
+  }
+  .modal h2{margin:0 0 8px; font-size:18px}
+  .modal .row-tight .pill{background:#101521}
+  .modal .choices{display:grid; gap:8px}
+  .modal .choices.cols-2{grid-template-columns:1fr 1fr}
+  .muted{color:#9fb0c7;font-size:13px}
+  .sep{height:1px;background:#2a3344;margin:10px 0}
+  label{font-size:14px}
+  .modal .btn{width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Royal Crush — HP Tracker</h1>
+
+  <!-- Boss selection -->
+  <div class="card" id="bossPicker">
+    <div class="row" id="bossButtons"></div>
+    <div class="hint" style="margin-top:8px">Tip: Tap a boss to auto-set starting HP. You can tweak Max HP below if you use variants.</div>
+  </div>
+
+  <!-- HP & controls -->
+  <div class="card" style="margin-top:12px">
+    <div class="stat">
+      <div>
+        <div class="sub">Current Royal</div>
+        <div id="bossName" class="big">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sub">HP</div>
+        <div class="big"><span id="hpNow">0</span>/<span id="hpMax">0</span></div>
+      </div>
+    </div>
+
+    <div class="bar" style="margin:10px 0 12px">
+      <span id="hpBar" style="width:0%"></span>
+    </div>
+
+    <div class="grid cols-4" style="margin-bottom:8px">
+      <button class="btn red" data-delta="-5">–5</button>
+      <button class="btn red" data-delta="-3">–3</button>
+      <button class="btn red" data-delta="-2">–2</button>
+      <button class="btn red" data-delta="-1">–1</button>
+
+      <button class="btn green" data-delta="+1">+1</button>
+      <button class="btn green" id="queenHeal">+3 (Queen)</button>
+      <button class="btn blue" id="applyPoison">Tick POI</button>
+      <button class="btn ghost" id="undoBtn">Undo</button>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="panel">
+        <div class="sub">Custom Adjust</div>
+        <div class="row-tight">
+          <input type="number" id="customVal" inputmode="numeric" placeholder="e.g., 7" />
+          <button class="btn" id="applyMinus">–</button>
+          <button class="btn" id="applyPlus">+</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="sub">Poison (POI)</div>
+        <div class="row-tight">
+          <button class="btn" id="poiMinus">–</button>
+          <div class="pill">POI: <span id="poiVal">0</span></div>
+          <button class="btn" id="poiPlus">+</button>
+          <div class="hint">Start of boss round: POI auto-applies when you tap <b>Next Round</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:10px">
+      <div class="panel">
+        <div class="sub">Max HP</div>
+        <div class="row-tight">
+          <button class="btn" id="maxMinus">–</button>
+          <div class="pill">Max: <span id="hpMaxPill">0</span></div>
+          <button class="btn" id="maxPlus">+</button>
+          <button class="btn ghost" id="setMaxBtn">Set</button>
+          <input type="number" id="setMaxInput" inputmode="numeric" placeholder="Set max…" />
+        </div>
+      </div>
+      <div class="panel">
+        <div class="sub">Round / Tools</div>
+        <div class="row-tight">
+          <div class="pill">Round: <span id="roundVal">1</span></div>
+          <button class="btn" id="nextRound">Next Round</button>
+          <button class="btn yellow" id="d12Btn">Roll D12</button>
+          <div class="pill" id="rollOut" aria-live="polite">—</div>
+
+          <!-- Boss Ability one-tap -->
+          <button class="btn yellow" id="bossAbilityBtn">Boss Ability</button>
+          <div class="pill" id="abilityOut" aria-live="polite">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-tight" style="margin-top:10px; justify-content:space-between">
+      <div class="hint">Boss ability reminders: Jack 25% +ATK2 • Queen 25% HEAL3 • King 20% purge POI • Joker 8–10 ATK×2</div>
+      <button class="btn" id="resetBtn">Reset Boss</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Pro tip: Add this page to your Home Screen on iOS for a full-screen app feel. State auto-saves.
+  </div>
+</div>
+
+<!-- Defeat Rewards Modal -->
+<div class="modal-backdrop" id="modalWrap" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h2 id="modalTitle">Royal Defeated</h2>
+    <div class="muted" id="modalSub">Apply rewards for this rank.</div>
+
+    <div class="sep"></div>
+
+    <div class="choices cols-2" style="margin-bottom:10px">
+      <div>
+        <div class="sub" style="margin-bottom:6px">Core Rewards</div>
+        <label><input type="checkbox" id="rwUpgradeChk"> Upgrade <span id="rwUpgradeVal"></span></label><br>
+        <label><input type="checkbox" id="rwTrashChk"> Trash 1 low card</label>
+      </div>
+      <div>
+        <div class="sub" style="margin-bottom:6px">Face vs Generic</div>
+        <label><input type="radio" name="rwType" value="face" checked> Suit Match → Gain Face Card</label><br>
+        <label><input type="radio" name="rwType" value="generic"> No Match → Pick Generic</label><br>
+        <select id="rwGenericPick" style="width:100%;margin-top:6px"></select>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="row-tight" style="justify-content:flex-end">
+      <button class="btn ghost" id="rwClose">Close</button>
+      <button class="btn" id="rwDone">Mark Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const bosses = [
+  {id:'jack',  label:'J♣ J♠ J♥ J♦', name:'Jacks',  maxHP:14},
+  {id:'queen', label:'Q♣ Q♠ Q♥ Q♦', name:'Queens', maxHP:24},
+  {id:'king',  label:'K♣ K♠ K♥ K♦', name:'Kings',  maxHP:30},
+  {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:38}
+];
+
+// defeat reward data (from your reference)
+const rewardData = {
+  jack:  {upgrade:5, tier:'Jack',  generics:['Training (ATK1 + HEAL1) 1X','Sprint (ATK2 + DMG1) 1X','Parry (IMM) 1X']},
+  queen: {upgrade:6, tier:'Queen', generics:['Tactics (ATK2) 1X','Rally (ATK2 + HEAL1) 1X','Scout (ATK1) 1X']},
+  king:  {upgrade:7, tier:'King',  generics:['Resolve (HEAL2) 1X','Fortify (MAX+1 + HEAL1) 1X','Purge (TRS2) 1X']},
+  joker: {upgrade:9, tier:'Joker', generics:['Chaos Spark (ATK5) 1X','Chaos Trick (ATK3) 1X','Chaos Ward (IMM) 1X']},
+};
+
+const els = {
+  bossButtons: document.getElementById('bossButtons'),
+  bossName: document.getElementById('bossName'),
+  hpNow: document.getElementById('hpNow'),
+  hpMax: document.getElementById('hpMax'),
+  hpBar: document.getElementById('hpBar'),
+  queenHeal: document.getElementById('queenHeal'),
+  applyPoison: document.getElementById('applyPoison'),
+  undoBtn: document.getElementById('undoBtn'),
+  customVal: document.getElementById('customVal'),
+  applyMinus: document.getElementById('applyMinus'),
+  applyPlus: document.getElementById('applyPlus'),
+  poiVal: document.getElementById('poiVal'),
+  poiMinus: document.getElementById('poiMinus'),
+  poiPlus: document.getElementById('poiPlus'),
+  hpMaxPill: document.getElementById('hpMaxPill'),
+  maxMinus: document.getElementById('maxMinus'),
+  maxPlus: document.getElementById('maxPlus'),
+  setMaxBtn: document.getElementById('setMaxBtn'),
+  setMaxInput: document.getElementById('setMaxInput'),
+  roundVal: document.getElementById('roundVal'),
+  nextRound: document.getElementById('nextRound'),
+  resetBtn: document.getElementById('resetBtn'),
+  d12Btn: document.getElementById('d12Btn'),
+  rollOut: document.getElementById('rollOut'),
+  bossAbilityBtn: document.getElementById('bossAbilityBtn'),
+  abilityOut: document.getElementById('abilityOut'),
+
+  // modal
+  modalWrap: document.getElementById('modalWrap'),
+  modalSub: document.getElementById('modalSub'),
+  rwUpgradeVal: document.getElementById('rwUpgradeVal'),
+  rwGenericPick: document.getElementById('rwGenericPick'),
+  rwUpgradeChk: document.getElementById('rwUpgradeChk'),
+  rwTrashChk: document.getElementById('rwTrashChk'),
+  rwClose: document.getElementById('rwClose'),
+  rwDone: document.getElementById('rwDone'),
+};
+
+let state = {
+  bossId: 'jack',
+  name: 'Jacks',
+  hp: 14,
+  maxHP: 14,
+  poison: 0,
+  round: 1,
+  history: [],
+  rewardShown: false
+};
+
+const save = ()=> localStorage.setItem('rc.hpTracker', JSON.stringify(state));
+const load = ()=>{
+  const raw = localStorage.getItem('rc.hpTracker');
+  if(raw){
+    try{ state = JSON.parse(raw); }catch{}
+  }else{
+    pickBoss('jack');
+  }
+};
+
+function vibrate(ms=15){ if(window.navigator && navigator.vibrate) navigator.vibrate(ms); }
+
+function pushHistory(){
+  state.history.push({hp:state.hp, maxHP:state.maxHP, poison:state.poison, round:state.round, rewardShown:state.rewardShown});
+  if(state.history.length>20) state.history.shift();
+}
+
+function render(){
+  els.bossName.textContent = state.name;
+  els.hpNow.textContent = state.hp;
+  els.hpMax.textContent = state.maxHP;
+  els.hpMaxPill.textContent = state.maxHP;
+  els.poiVal.textContent = state.poison;
+  els.roundVal.textContent = state.round;
+  const pct = Math.max(0, Math.min(100, (state.hp/state.maxHP)*100));
+  els.hpBar.style.width = pct + '%';
+
+  // active boss highlight
+  [...els.bossButtons.querySelectorAll('.boss-btn')].forEach(b=>{
+    b.classList.toggle('active', b.dataset.id===state.bossId);
+  });
+
+  // contextual quick button for Queen heal
+  els.queenHeal.disabled = state.bossId!=='queen';
+  els.queenHeal.style.opacity = state.bossId==='queen' ? '1' : '.6';
+
+  // if defeated and not yet shown, show reward prompt
+  if(state.hp === 0 && !state.rewardShown){
+    showRewardPrompt();
+  }
+
+  save();
+}
+
+function pickBoss(id){
+  const b = bosses.find(x=>x.id===id);
+  pushHistory();
+  state.bossId = id;
+  state.name = b.name;
+  state.maxHP = b.maxHP;
+  state.hp = b.maxHP;
+  state.round = 1;
+  state.poison = 0;
+  state.rewardShown = false;
+  // clear pills
+  els.rollOut.textContent = '—';
+  els.abilityOut.textContent = '—';
+  hideRewardPrompt();
+  render();
+}
+
+function adjustHP(delta){
+  pushHistory();
+  state.hp = Math.max(0, Math.min(state.maxHP, state.hp + delta));
+  vibrate();
+  render();
+}
+
+function setMaxHP(val){
+  const n = Number(val);
+  if(!Number.isFinite(n) || n<=0) return;
+  pushHistory();
+  state.maxHP = Math.max(1, Math.round(n));
+  state.hp = Math.min(state.hp, state.maxHP);
+  render();
+}
+
+function adjustPoison(delta){
+  pushHistory();
+  state.poison = Math.max(0, state.poison + delta);
+  vibrate();
+  render();
+}
+
+function tickPoison(){
+  if(state.poison<=0) return false;
+  pushHistory();
+  state.hp = Math.max(0, state.hp - state.poison);
+  vibrate();
+  render();
+  return true;
+}
+
+// Next Round: tick POI first, then increment round
+function nextRound(){
+  const ticked = tickPoison();
+  pushHistory();
+  state.round += 1;
+  render();
+  if(ticked){
+    els.rollOut.textContent = `POI tick ${state.poison}`;
+  }
+}
+
+function undo(){
+  const last = state.history.pop();
+  if(!last) return;
+  state.hp = last.hp; state.maxHP = last.maxHP; state.poison = last.poison; state.round = last.round; state.rewardShown = last.rewardShown;
+  vibrate();
+  render();
+}
+
+function rollD12(){
+  const r = Math.floor(Math.random()*12)+1;
+  els.rollOut.textContent = 'D12: ' + r + (r===12?' (FAIL)':'');
+  vibrate(25);
+  return r;
+}
+
+/* ---------- Boss Ability one-tap ---------- */
+function showAbilityMsg(msg, color = '#cfe3ff') {
+  els.abilityOut.textContent = msg;
+  els.abilityOut.style.background = '#141a24';
+  els.abilityOut.style.borderColor = '#293143';
+  els.abilityOut.style.color = color;
+}
+function bossAbilityCheck() {
+  const r = rollD12(); // also updates the D12 pill
+  if (state.bossId === 'jack') {
+    if (r <= 3) showAbilityMsg('+2 ATK this turn', '#ffd38a');
+    else showAbilityMsg('No effect', '#9ec5ff');
+  } else if (state.bossId === 'queen') {
+    if (r <= 3) {
+      pushHistory();
+      state.hp = Math.min(state.maxHP, state.hp + 3);
+      render();
+      showAbilityMsg('Queen heals +3', '#b7ffb7');
+    } else showAbilityMsg('No effect', '#9ec5ff');
+  } else if (state.bossId === 'king') {
+    if (r <= 2) {
+      if (state.poison > 0) {
+        pushHistory(); state.poison = 0; render();
+        showAbilityMsg('King purges POI', '#ffbdbd');
+      } else showAbilityMsg('Purge (no POI)', '#ffdfbd');
+    } else showAbilityMsg('No effect', '#9ec5ff');
+  } else if (state.bossId === 'joker') {
+    if (r >= 8 && r <= 10) showAbilityMsg('ATK ×2 this turn!', '#ffd38a');
+    else showAbilityMsg('No effect', '#9ec5ff');
+  }
+}
+
+/* ---------- Defeat Rewards Modal ---------- */
+function fillGenericOptions(list){
+  els.rwGenericPick.innerHTML = '';
+  list.forEach(txt=>{
+    const opt = document.createElement('option');
+    opt.textContent = txt;
+    els.rwGenericPick.appendChild(opt);
+  });
+}
+
+function showRewardPrompt(){
+  const data = rewardData[state.bossId];
+  if(!data) return;
+  els.modalSub.textContent = `${state.name} defeated — apply rewards: Upgrade ${data.upgrade} • Trash 1 • Face (if suit match) or pick a ${data.tier} Generic.`;
+  els.rwUpgradeVal.textContent = `(${data.upgrade}♣♠♥♦)`;
+  fillGenericOptions(data.generics);
+  // reset toggles each time visible
+  els.rwUpgradeChk.checked = false;
+  els.rwTrashChk.checked = false;
+  document.querySelector('input[name="rwType"][value="face"]').checked = true;
+
+  els.modalWrap.style.display = 'flex';
+  state.rewardShown = true;
+  save();
+}
+function hideRewardPrompt(){
+  els.modalWrap.style.display = 'none';
+}
+
+// Mark Done / Close
+els.rwDone?.addEventListener('click', ()=>{
+  hideRewardPrompt();
+});
+els.rwClose?.addEventListener('click', hideRewardPrompt);
+
+/* ---------- UI setup ---------- */
+function initBossButtons(){
+  const frag = document.createDocumentFragment();
+  bosses.forEach(b=>{
+    const btn = document.createElement('button');
+    btn.className = 'boss-btn';
+    btn.dataset.id = b.id;
+    btn.innerHTML = `<strong>${b.label}</strong><small>${b.name} • HP ${b.maxHP}</small>`;
+    btn.addEventListener('click', ()=> pickBoss(b.id));
+    frag.appendChild(btn);
+  });
+  els.bossButtons.appendChild(frag);
+}
+
+function initControls(){
+  document.querySelectorAll('[data-delta]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const d = Number(btn.dataset.delta);
+      adjustHP(d);
+    });
+  });
+  els.queenHeal.addEventListener('click', ()=> adjustHP(+3));
+  els.applyPoison.addEventListener('click', tickPoison);
+  els.undoBtn.addEventListener('click', undo);
+
+  els.applyMinus.addEventListener('click', ()=>{
+    const v = Number(els.customVal.value);
+    if(Number.isFinite(v)) adjustHP(-Math.abs(v));
+  });
+  els.applyPlus.addEventListener('click', ()=>{
+    const v = Number(els.customVal.value);
+    if(Number.isFinite(v)) adjustHP(+Math.abs(v));
+  });
+
+  els.poiMinus.addEventListener('click', ()=> adjustPoison(-1));
+  els.poiPlus.addEventListener('click',  ()=> adjustPoison(+1));
+
+  els.maxMinus.addEventListener('click', ()=> setMaxHP(state.maxHP-1));
+  els.maxPlus.addEventListener('click',  ()=> setMaxHP(state.maxHP+1));
+  els.setMaxBtn.addEventListener('click', ()=> setMaxHP(els.setMaxInput.value));
+
+  els.nextRound.addEventListener('click', nextRound);
+  els.resetBtn.addEventListener('click', ()=> pickBoss(state.bossId));
+  els.d12Btn.addEventListener('click', rollD12);
+
+  // Boss ability button
+  els.bossAbilityBtn.addEventListener('click', bossAbilityCheck);
+
+  // swipe left/right to change bosses
+  let sx=0, sy=0;
+  document.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+  document.addEventListener('touchend', e=>{
+    const dx = (e.changedTouches[0].clientX - sx);
+    const dy = (e.changedTouches[0].clientY - sy);
+    if(Math.abs(dx)>60 && Math.abs(dy)<40){
+      const i = bosses.findIndex(x=>x.id===state.bossId);
+      const ni = dx<0 ? Math.min(i+1, bosses.length-1) : Math.max(i-1, 0);
+      pickBoss(bosses[ni].id);
+    }
+  }, {passive:true});
+}
+
+/* ---------- Boot ---------- */
+initBossButtons();
+load();
+initControls();
+render();
+</script>
+</body>
+</html>
