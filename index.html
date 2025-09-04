@@ -26,7 +26,7 @@
     background:#171b25; color:#e9eef6; cursor:pointer; text-align:left; position:relative;
   }
   .boss-btn.active{outline:2px solid var(--accent-2); background:#132032}
-  .boss-btn small{display:block; color:var(--sub)}
+  .boss-btn small{display:block; color:#aab3c2}
   .panel{background:var(--muted); border-radius:12px; padding:12px}
   .grid{display:grid; gap:10px}
   .grid.cols-2{grid-template-columns:1fr 1fr}
@@ -43,7 +43,7 @@
   .btn.blue{background:#14243b; border-color:#1e3554; color:#d9ecff}
   .stat{display:flex; justify-content:space-between; align-items:center}
   .stat .big{font-weight:700; font-size:28px}
-  .sub{color:var(--sub)}
+  .sub{color:#aab3c2}
   .bar{height:14px; background:#0e1420; border:1px solid #283045; border-radius:999px; overflow:hidden}
   .bar > span{display:block; height:100%; background:linear-gradient(90deg, #60a5fa, #34d399)}
   .row-tight{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
@@ -60,7 +60,6 @@
     width:min(560px, 96vw); background:#141823; border:1px solid #2a3344; border-radius:16px; padding:16px; box-shadow:0 16px 60px rgba(0,0,0,.55)
   }
   .modal h2{margin:0 0 8px; font-size:18px}
-  .modal .row-tight .pill{background:#101521}
   .modal .choices{display:grid; gap:8px}
   .modal .choices.cols-2{grid-template-columns:1fr 1fr}
   .muted{color:#9fb0c7;font-size:13px}
@@ -73,14 +72,8 @@
 <div class="wrap">
   <h1>Royal Crush — HP Tracker</h1>
 
-  <!-- Boss selection -->
-  <div class="card" id="bossPicker">
-    <div class="row" id="bossButtons"></div>
-    <div class="hint" style="margin-top:8px">Tip: Tap a boss to auto-set starting HP. You can tweak Max HP below if you use variants.</div>
-  </div>
-
   <!-- HP & controls -->
-  <div class="card" style="margin-top:12px">
+  <div class="card" id="mainCard">
     <div class="stat">
       <div>
         <div class="sub">Current Royal</div>
@@ -147,16 +140,22 @@
           <button class="btn yellow" id="d12Btn">Roll D12</button>
           <div class="pill" id="rollOut" aria-live="polite">—</div>
 
-          <!-- Boss Ability one-tap -->
           <button class="btn yellow" id="bossAbilityBtn">Boss Ability</button>
           <div class="pill" id="abilityOut" aria-live="polite">—</div>
         </div>
       </div>
     </div>
 
-    <div class="row-tight" style="margin-top:10px; justify-content:space-between">
+    <!-- Reset + Boss selection moved here -->
+    <div class="row-tight" style="margin-top:12px; justify-content:space-between">
       <div class="hint">Boss ability reminders: Jack 25% +ATK2 • Queen 25% HEAL3 • King 20% purge POI • Joker 8–10 ATK×2</div>
       <button class="btn" id="resetBtn">Reset Boss</button>
+    </div>
+
+    <div class="panel" id="bossPicker" style="margin-top:10px">
+      <div class="sub" style="margin-bottom:6px">Change Boss</div>
+      <div class="row" id="bossButtons"></div>
+      <div class="hint" style="margin-top:6px">Tip: Tap a boss to set its HP and clear status.</div>
     </div>
   </div>
 
@@ -374,9 +373,10 @@ function undo(){
   render();
 }
 
+// CLEANER D12 (no "(FAIL)" tag)
 function rollD12(){
   const r = Math.floor(Math.random()*12)+1;
-  els.rollOut.textContent = 'D12: ' + r + (r===12?' (FAIL)':'');
+  els.rollOut.textContent = 'D12: ' + r;
   vibrate(25);
   return r;
 }
