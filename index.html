@@ -3,19 +3,22 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Royal Crush — Fixed-Damage Tracker</title>
+<title>Royal Crush — Fixed-Damage Tracker (Fast)</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --muted:#202534; --ink:#e9eef6; --sub:#aab3c2;
     --accent:#6ee7b7; --accent-2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif}
   .wrap{max-width:840px;margin:0 auto;padding:16px}
   h1{margin:0 0 12px;font-size:20px}
-  .card{background:linear-gradient(180deg,var(--panel),#121722);
-    border:1px solid #272c3b; border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .card{
+    background:linear-gradient(180deg,var(--panel),#121722);
+    border:1px solid #272c3b; border-radius:14px; padding:14px; box-shadow:var(--shadow)
+  }
   .grid{display:grid; gap:10px}
   .g3{grid-template-columns:repeat(3,1fr)}
   .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
@@ -35,11 +38,23 @@
   .boss-btn{flex:1 1 140px;padding:10px;border-radius:12px;border:1px solid #2b3040;background:#171b25;color:#e9eef6;text-align:left}
   .boss-btn.active{outline:2px solid var(--accent-2);background:#132033}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,"Liberation Mono","Courier New",monospace}
+
+  /* Performance mode (lighter styles) */
+  .perf .card{background:#151923; box-shadow:none}
+  .perf .bar>span{background:#60a5fa}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Royal Crush — Fixed-Damage Tracker</h1>
+
+  <div class="row" style="margin-bottom:8px">
+    <label class="row" style="gap:6px">
+      <input type="checkbox" id="perfModeChk" />
+      <span class="sub">Performance Mode (reduce effects & haptics)</span>
+    </label>
+    <button class="btn ghost" id="clearSaveBtn">Clear Save</button>
+  </div>
 
   <div class="card">
     <!-- Boss header -->
@@ -112,11 +127,6 @@
           <button class="btn" id="poiMinus">POI -1</button>
           <div class="pill">POI: <span id="poiVal">0</span></div>
         </div>
-        <div class="row" style="margin-top:6px">
-          <button class="btn ghost" id="undoBtn">Undo</button>
-          <button class="btn ghost" id="resetBoss">Reset This Boss</button>
-          <button class="btn ghost" id="clearSaveBtn">Clear Save</button>
-        </div>
         <div class="hint" style="margin-top:6px">
           Boss Turn: POI ticks, ability bonus (if any) applied to DMG, Shield reduces DMG, then next Player round starts (Plays reset).
         </div>
@@ -137,7 +147,7 @@
     <div class="hint" style="margin-top:6px">Jacks 8/2 (≤3 +2) • Queens 12/4 (≤3 heal3) • Kings 16/5 (≤2 purge) • Joker 24/6 (8–10 ×2)</div>
   </div>
 
-  <p class="hint" style="margin-top:12px">State auto-saves locally.</p>
+  <p class="hint" style="margin-top:12px">State auto-saves locally. Use Performance Mode if your device stutters.</p>
 </div>
 
 <script>
@@ -178,127 +188,129 @@ let state = {
   jackPlus2: false,
   jokerTimes2: false,
 
+  // UX
+  perfMode: false,
+
+  // undo
   history: []
 };
 
 /* ----------------- Elements ----------------- */
+const $ = id => document.getElementById(id);
 const els = {
-  bossName: document.getElementById('bossName'),
-  bossStatsSub: document.getElementById('bossStatsSub'),
-  hpNow: document.getElementById('hpNow'),
-  hpMax: document.getElementById('hpMax'),
-  hpBar: document.getElementById('hpBar'),
+  root: document.documentElement,
+  bossName: $('bossName'),
+  bossStatsSub: $('bossStatsSub'),
+  hpNow: $('hpNow'),
+  hpMax: $('hpMax'),
+  hpBar: $('hpBar'),
 
-  heroHP: document.getElementById('heroHP'),
-  hpMinus: document.getElementById('hpMinus'),
-  hpPlus: document.getElementById('hpPlus'),
+  heroHP: $('heroHP'),
+  hpMinus: $('hpMinus'),
+  hpPlus: $('hpPlus'),
 
-  playsLeft: document.getElementById('playsLeft'),
-  playsMax: document.getElementById('playsMax'),
-  shieldVal: document.getElementById('shieldVal'),
+  playsLeft: $('playsLeft'),
+  playsMax: $('playsMax'),
+  shieldVal: $('shieldVal'),
 
-  cardVal: document.getElementById('cardVal'),
-  cardSuit: document.getElementById('cardSuit'),
-  rollHitBtn: document.getElementById('rollHitBtn'),
-  lastRoll: document.getElementById('lastRoll'),
-  hitResult: document.getElementById('hitResult'),
+  cardVal: $('cardVal'),
+  cardSuit: $('cardSuit'),
+  rollHitBtn: $('rollHitBtn'),
+  lastRoll: $('lastRoll'),
+  hitResult: $('hitResult'),
 
-  abilityBtn: document.getElementById('abilityBtn'),
-  abilityOut: document.getElementById('abilityOut'),
+  abilityBtn: $('abilityBtn'),
+  abilityOut: $('abilityOut'),
 
-  bossTurnBtn: document.getElementById('bossTurnBtn'),
-  roundOut: document.getElementById('roundOut'),
+  bossTurnBtn: $('bossTurnBtn'),
+  roundOut: $('roundOut'),
 
-  poiPlus: document.getElementById('poiPlus'),
-  poiMinus: document.getElementById('poiMinus'),
-  poiVal: document.getElementById('poiVal'),
+  poiPlus: $('poiPlus'),
+  poiMinus: $('poiMinus'),
+  poiVal: $('poiVal'),
 
-  undoBtn: document.getElementById('undoBtn'),
-  resetBoss: document.getElementById('resetBoss'),
-  clearSaveBtn: document.getElementById('clearSaveBtn'),
-  bossButtons: document.getElementById('bossButtons')
+  clearSaveBtn: $('clearSaveBtn'),
+  perfModeChk: $('perfModeChk'),
+
+  bossButtons: $('bossButtons')
 };
 
-/* ----------------- Helpers (freeze-safe) ----------------- */
+/* ----------------- Perf-safe helpers ----------------- */
 function vibrate(ms=15){
+  if(state.perfMode) return;
   try { if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(ms); } catch {}
 }
 
-// Persist a lean snapshot (exclude history)
-function save(){
-  const { history, ...lean } = state;
-  try {
-    localStorage.setItem('rc.fixed', JSON.stringify(lean));
-  } catch (e) {
-    // If storage quota hit, try a smaller snapshot (drop ability flags too)
-    const { jackPlus2, jokerTimes2, ...smaller } = lean;
-    try { localStorage.setItem('rc.fixed', JSON.stringify(smaller)); } catch {}
-  }
+let saveTimer = null;
+function scheduleSave(){
+  if(saveTimer) return;
+  saveTimer = setTimeout(()=>{
+    saveTimer = null;
+    const { history, ...lean } = state;
+    try {
+      localStorage.setItem('rc.fixed.fast', JSON.stringify(lean));
+    } catch {}
+  }, 300);
 }
-
 function load(){
-  const raw = localStorage.getItem('rc.fixed');
+  const raw = localStorage.getItem('rc.fixed.fast');
   if(!raw) return;
   try {
     const loaded = JSON.parse(raw);
-    state = { ...state, ...loaded, history: [] }; // keep history empty
+    state = { ...state, ...loaded, history: [] };
+    if(state.perfMode) els.root.classList.add('perf');
+    els.perfModeChk.checked = !!state.perfMode;
   } catch {}
 }
 
-// Keep undo small and cheap
-function pushHistory(){
-  const snapshot = {
-    bossId: state.bossId,
-    name: state.name,
-    hp: state.hp,
-    maxHP: state.maxHP,
-    atk: state.atk,
-    heroHP: state.heroHP,
-    plays: state.plays,
-    playsMax: state.playsMax,
-    diamondExtraEarned: state.diamondExtraEarned,
-    shield: state.shield,
-    poison: state.poison,
-    round: state.round,
-    jackPlus2: state.jackPlus2,
-    jokerTimes2: state.jokerTimes2,
-  };
-  state.history.push(snapshot);
-  if (state.history.length > 10) state.history.shift();
+// render scheduler
+let rafId = 0, dirty = false;
+function scheduleRender(){
+  if(dirty) return;
+  dirty = true;
+  rafId = requestAnimationFrame(_render);
 }
-
-function undo(){
-  const last = state.history.pop();
-  if(!last) return;
-  state = { ...state, ...last, history: state.history };
-  render();
-}
-
-function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-function pct(){ return Math.max(0, Math.min(100, (state.hp/state.maxHP)*100)); }
-
-/* ----------------- Rendering ----------------- */
-function render(){
+function _render(){
+  dirty = false;
+  // boss
   els.bossName.textContent = state.name;
   els.bossStatsSub.textContent = `HP ${state.hp}/${state.maxHP} • DMG ${state.atk}`;
   els.hpNow.textContent = state.hp;
   els.hpMax.textContent = state.maxHP;
-  els.hpBar.style.width = pct() + '%';
-
+  els.hpBar.style.width = Math.max(0, Math.min(100, (state.hp/state.maxHP)*100)) + '%';
+  // hero
   els.heroHP.textContent = state.heroHP;
   els.playsLeft.textContent = state.plays;
   els.playsMax.textContent = state.playsMax;
   els.shieldVal.textContent = state.shield;
-
   els.poiVal.textContent = state.poison;
   els.roundOut.textContent = `Round ${state.round}`;
-
-  // highlight active boss
+  // perf class
+  els.root.classList.toggle('perf', !!state.perfMode);
+  // active boss highlight
   [...els.bossButtons.querySelectorAll('button')].forEach(b=>{
     b.classList.toggle('active', b.dataset.id===state.bossId);
   });
+  scheduleSave();
+}
 
-  save();
+/* ----------------- Undo (lean) ----------------- */
+function pushHistory(){
+  // Only capture essentials; cap to 5
+  const snap = {
+    bossId: state.bossId, name: state.name, hp: state.hp, maxHP: state.maxHP, atk: state.atk,
+    heroHP: state.heroHP, plays: state.plays, playsMax: state.playsMax,
+    diamondExtraEarned: state.diamondExtraEarned, shield: state.shield, poison: state.poison,
+    round: state.round, jackPlus2: state.jackPlus2, jokerTimes2: state.jokerTimes2
+  };
+  state.history.push(snap);
+  if(state.history.length>5) state.history.shift();
+}
+function undo(){
+  const last = state.history.pop();
+  if(!last) return;
+  state = { ...state, ...last, history: state.history };
+  scheduleRender();
 }
 
 /* ----------------- Boss switching/reset ----------------- */
@@ -321,31 +333,33 @@ function pickBoss(id){
   state.jackPlus2 = false;
   state.jokerTimes2 = false;
 
-  render();
+  scheduleRender();
 }
 
 function resetThisBoss(){
   pickBoss(state.bossId);
 }
 
-/* ----------------- Player actions ----------------- */
+/* ----------------- Mutators (batched) ----------------- */
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
 function applyBossHP(delta){
   pushHistory();
   state.hp = clamp(state.hp + delta, 0, state.maxHP);
-  render();
+  scheduleRender();
 }
 
 function applyHeroHP(delta){
   pushHistory();
   state.heroHP = clamp(state.heroHP + delta, 0, HERO_MAX_HP);
-  render();
+  scheduleRender();
 }
 
 function spendPlay(){
   if(state.plays <= 0) return false;
   pushHistory();
   state.plays -= 1;
-  render();
+  scheduleRender();
   return true;
 }
 
@@ -355,7 +369,7 @@ function grantDiamondPlay(){
   state.diamondExtraEarned += 1;
   state.plays += 1;
   state.playsMax += 1;
-  render();
+  scheduleRender();
 }
 
 /* ----------------- Roll to Hit ----------------- */
@@ -376,7 +390,7 @@ function doHitRoll(){
     applyHeroHP(-1); // self damage
     result = 'FUMBLE: self-1';
     els.hitResult.textContent = result;
-    vibrate(30);
+    vibrate(10);
     return;
   }
 
@@ -385,7 +399,7 @@ function doHitRoll(){
     spendPlay();
     result = 'Miss';
     els.hitResult.textContent = result;
-    vibrate(15);
+    vibrate(5);
     return;
   }
 
@@ -394,15 +408,14 @@ function doHitRoll(){
 
   let dmg = DMG_PER_HIT;
   if(r === 1) dmg += 1; // Lucky strike
-
   applyBossHP(-dmg);
 
   // Suit effects on hit
   if(suit === 'club'){
-    pushHistory(); state.shield += CLUB_SHIELD; render();
+    pushHistory(); state.shield += CLUB_SHIELD; scheduleRender();
     result = `Hit −${dmg} • ♣ Shield +${CLUB_SHIELD}`;
   } else if(suit === 'spade'){
-    pushHistory(); state.poison += SPADE_POI; render();
+    pushHistory(); state.poison += SPADE_POI; scheduleRender();
     result = `Hit −${dmg} • ♠ POI +${SPADE_POI}`;
   } else if(suit === 'heart'){
     applyHeroHP(+HEART_HEAL);
@@ -413,7 +426,7 @@ function doHitRoll(){
   }
 
   els.hitResult.textContent = result;
-  vibrate(25);
+  vibrate(8);
 }
 
 /* ----------------- Boss ability + turn ----------------- */
@@ -427,7 +440,7 @@ function bossAbility(){
     if(r <= 3){
       pushHistory();
       state.hp = Math.min(state.maxHP, state.hp + 3);
-      render();
+      scheduleRender();
       msg = `d12: ${r} • Heal +3 • DMG ${state.atk}`;
     } else {
       msg = `d12: ${r} • DMG ${state.atk}`;
@@ -437,7 +450,7 @@ function bossAbility(){
       pushHistory();
       const had = state.poison;
       state.poison = 0;
-      render();
+      scheduleRender();
       msg = `d12: ${r} • Purge ${had>0?'POI':'(none)'} • DMG ${state.atk}`;
     } else {
       msg = `d12: ${r} • DMG ${state.atk}`;
@@ -454,7 +467,7 @@ function bossTurn(){
 
   // 1) POI tick at start of boss turn
   if(state.poison > 0){
-    state.hp = clamp(state.hp - state.poison, 0, state.maxHP);
+    state.hp = Math.max(0, state.hp - state.poison);
   }
 
   // 2) Compute outgoing DMG
@@ -467,7 +480,7 @@ function bossTurn(){
   state.shield = 0;
 
   // 4) Hit hero
-  state.heroHP = clamp(state.heroHP - reduced, 0, HERO_MAX_HP);
+  state.heroHP = Math.max(0, Math.min(HERO_MAX_HP, state.heroHP - reduced));
 
   // 5) Clear ability flags for next round
   state.jackPlus2 = false;
@@ -480,16 +493,15 @@ function bossTurn(){
   state.playsMax = BASE_PLAYS;
   state.diamondExtraEarned = 0;
 
-  render();
+  scheduleRender();
 }
 
-/* ----------------- Quick buttons ----------------- */
+/* ----------------- Quick buttons & picker ----------------- */
 function initQuickDamageButtons(){
   document.querySelectorAll('[data-delta]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const d = Number(btn.getAttribute('data-delta'));
       if(d < 0){
-        // Using quick Hit buttons spends a play
         if(d === -5 || d === -6){
           if(state.plays <= 0){ els.hitResult.textContent = 'No plays left'; return; }
           spendPlay();
@@ -498,11 +510,10 @@ function initQuickDamageButtons(){
       }else{
         applyBossHP(d);
       }
-    });
+    }, {passive:true});
   });
 }
 
-/* ----------------- Boss picker ----------------- */
 function initBossPicker(){
   const frag = document.createDocumentFragment();
   bosses.forEach(b=>{
@@ -510,7 +521,7 @@ function initBossPicker(){
     el.className = 'boss-btn';
     el.dataset.id = b.id;
     el.innerHTML = `<strong>${b.label}</strong><div class="sub">HP ${b.maxHP} • DMG ${b.atk}</div>`;
-    el.addEventListener('click', ()=> pickBoss(b.id));
+    el.addEventListener('click', ()=> pickBoss(b.id), {passive:true});
     frag.appendChild(el);
   });
   els.bossButtons.appendChild(frag);
@@ -519,24 +530,26 @@ function initBossPicker(){
 /* ----------------- Events ----------------- */
 function init(){
   load();
-  if(!state || !state.maxHP){ pickBoss('jack'); } else { render(); }
+  if(!state || !state.maxHP){ pickBoss('jack'); } else { scheduleRender(); }
 
-  els.hpMinus.addEventListener('click', ()=> applyHeroHP(-1));
-  els.hpPlus.addEventListener('click',  ()=> applyHeroHP(+1));
+  els.hpMinus.addEventListener('click', ()=> applyHeroHP(-1), {passive:true});
+  els.hpPlus.addEventListener('click',  ()=> applyHeroHP(+1), {passive:true});
 
   els.rollHitBtn.addEventListener('click', doHitRoll);
-
   els.abilityBtn.addEventListener('click', bossAbility);
   els.bossTurnBtn.addEventListener('click', bossTurn);
 
-  els.poiPlus.addEventListener('click', ()=>{ pushHistory(); state.poison += 1; render(); });
-  els.poiMinus.addEventListener('click', ()=>{ pushHistory(); state.poison = Math.max(0, state.poison-1); render(); });
+  els.poiPlus.addEventListener('click', ()=>{ pushHistory(); state.poison += 1; scheduleRender(); }, {passive:true});
+  els.poiMinus.addEventListener('click', ()=>{ pushHistory(); state.poison = Math.max(0, state.poison-1); scheduleRender(); }, {passive:true});
 
-  els.undoBtn.addEventListener('click', undo);
-  els.resetBoss.addEventListener('click', resetThisBoss);
   els.clearSaveBtn.addEventListener('click', ()=>{
-    try { localStorage.removeItem('rc.fixed'); } catch {}
+    try { localStorage.removeItem('rc.fixed.fast'); } catch {}
     pickBoss(state.bossId);
+  });
+
+  els.perfModeChk.addEventListener('change', (e)=>{
+    state.perfMode = !!e.target.checked;
+    scheduleRender();
   });
 
   initQuickDamageButtons();
