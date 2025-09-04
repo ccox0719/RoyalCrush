@@ -78,6 +78,7 @@
       <div>
         <div class="sub">Current Royal</div>
         <div id="bossName" class="big">—</div>
+        <div class="sub" id="bossDmgSub">DMG —</div>
       </div>
       <div style="text-align:right">
         <div class="sub">HP</div>
@@ -97,7 +98,6 @@
 
       <button class="btn green" data-delta="+1">+1</button>
       <button class="btn green" id="queenHeal">+3 (Queen)</button>
-      <!-- CHANGED: label & behavior to increment POI -->
       <button class="btn blue" id="applyPoison">POI +1</button>
       <button class="btn ghost" id="undoBtn">Undo</button>
     </div>
@@ -198,23 +198,55 @@
 
 <script>
 const bosses = [
-  {id:'jack',  label:'J♣ J♠ J♥ J♦', name:'Jacks',  maxHP:14},
-  {id:'queen', label:'Q♣ Q♠ Q♥ Q♦', name:'Queens', maxHP:24},
-  {id:'king',  label:'K♣ K♠ K♥ K♦', name:'Kings',  maxHP:30},
-  {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:38}
+  {id:'jack',  label:'J♣ J♠ J♥ J♦', name:'Jacks',  maxHP:21, atk:3},
+  {id:'queen', label:'Q♣ Q♠ Q♥ Q♦', name:'Queens', maxHP:38, atk:6},
+  {id:'king',  label:'K♣ K♠ K♥ K♦', name:'Kings',  maxHP:45, atk:6},
+  {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:50, atk:7}
 ];
 
-// defeat reward data
 const rewardData = {
-  jack:  {upgrade:5, tier:'Jack',  generics:['Training (ATK1 + HEAL1) 1X','Sprint (ATK2 + DMG1) 1X','Parry (IMM) 1X']},
-  queen: {upgrade:6, tier:'Queen', generics:['Tactics (ATK2) 1X','Rally (ATK2 + HEAL1) 1X','Scout (ATK1) 1X']},
-  king:  {upgrade:7, tier:'King',  generics:['Resolve (HEAL2) 1X','Fortify (MAX+1 + HEAL1) 1X','Purge (TRS2) 1X']},
-  joker: {upgrade:9, tier:'Joker', generics:['Chaos Spark (ATK5) 1X','Chaos Trick (ATK3) 1X','Chaos Ward (IMM) 1X']},
+  jack:  {
+    upgrade:5,
+    tier:'Jack',
+    generics:[
+      'Training (ATK1 + HEAL1) 1X',
+      'Sprint (ATK2 + DMG1) 1X',
+      'Parry (IMM) 1X'
+    ]
+  },
+  queen: {
+    upgrade:6,
+    tier:'Queen',
+    generics:[
+      'Tactics (ATK2 OR 🔄 draw 1, discard 1) 1X',
+      'Rally (ATK2 + HEAL1) 1X',
+      'Scout (ATK1 + 🔮 scry 2; keep 1, bottom 1) 1X'
+    ]
+  },
+  king:  {
+    upgrade:7,
+    tier:'King',
+    generics:[
+      'Resolve (HEAL3) 1X',
+      'Fortify (MAX+1 + HEAL1) 1X',
+      'Purge (TRS2) 1X'
+    ]
+  },
+  joker: {
+    upgrade:9,
+    tier:'Joker',
+    generics:[
+      'Chaos Spark (ATK5) 1X',
+      'Chaos Trick (ATK3 + POI2) 1X',
+      'Chaos Ward (IMM) 1X'
+    ]
+  },
 };
 
 const els = {
   bossButtons: document.getElementById('bossButtons'),
   bossName: document.getElementById('bossName'),
+  bossDmgSub: document.getElementById('bossDmgSub'),
   hpNow: document.getElementById('hpNow'),
   hpMax: document.getElementById('hpMax'),
   hpBar: document.getElementById('hpBar'),
@@ -254,8 +286,9 @@ const els = {
 let state = {
   bossId: 'jack',
   name: 'Jacks',
-  hp: 14,
-  maxHP: 14,
+  hp: 21,
+  maxHP: 21,
+  atk: 3,
   poison: 0,
   round: 1,
   history: [],
@@ -275,7 +308,7 @@ const load = ()=>{
 function vibrate(ms=15){ if(window.navigator && navigator.vibrate) navigator.vibrate(ms); }
 
 function pushHistory(){
-  state.history.push({hp:state.hp, maxHP:state.maxHP, poison:state.poison, round:state.round, rewardShown:state.rewardShown});
+  state.history.push({hp:state.hp, maxHP:state.maxHP, atk:state.atk, poison:state.poison, round:state.round, rewardShown:state.rewardShown, bossId:state.bossId, name:state.name});
   if(state.history.length>20) state.history.shift();
 }
 
@@ -286,6 +319,7 @@ function render(){
   els.hpMaxPill.textContent = state.maxHP;
   els.poiVal.textContent = state.poison;
   els.roundVal.textContent = state.round;
+  els.bossDmgSub.textContent = 'DMG ' + (state.atk ?? '—');
   const pct = Math.max(0, Math.min(100, (state.hp/state.maxHP)*100));
   els.hpBar.style.width = pct + '%';
 
@@ -313,6 +347,7 @@ function pickBoss(id){
   state.name = b.name;
   state.maxHP = b.maxHP;
   state.hp = b.maxHP;
+  state.atk = b.atk;
   state.round = 1;
   state.poison = 0;
   state.rewardShown = false;
@@ -369,7 +404,7 @@ function nextRound(){
 function undo(){
   const last = state.history.pop();
   if(!last) return;
-  state.hp = last.hp; state.maxHP = last.maxHP; state.poison = last.poison; state.round = last.round; state.rewardShown = last.rewardShown;
+  state.hp = last.hp; state.maxHP = last.maxHP; state.atk = last.atk; state.poison = last.poison; state.round = last.round; state.rewardShown = last.rewardShown; state.bossId = last.bossId; state.name = last.name;
   vibrate();
   render();
 }
@@ -382,35 +417,62 @@ function rollD12(){
   return r;
 }
 
-/* ---------- Boss Ability one-tap ---------- */
-function showAbilityMsg(msg, color = '#cfe3ff') {
+/* ---------- Boss Ability one-tap (now shows exact DMG) ---------- */
+function paintAbility(msg, color = '#cfe3ff') {
   els.abilityOut.textContent = msg;
   els.abilityOut.style.background = '#141a24';
   els.abilityOut.style.borderColor = '#293143';
   els.abilityOut.style.color = color;
 }
+
 function bossAbilityCheck() {
   const r = rollD12();
+  const base = state.atk ?? 0;
+
   if (state.bossId === 'jack') {
-    if (r <= 3) showAbilityMsg('+2 ATK this turn', '#ffd38a');
-    else showAbilityMsg('No effect', '#9ec5ff');
-  } else if (state.bossId === 'queen') {
     if (r <= 3) {
+      const dmg = base + 2;
+      paintAbility(`DMG ${dmg} (base ${base} +2)`, '#ffd38a');
+    } else {
+      paintAbility(`DMG ${base} (no ability)`, '#9ec5ff');
+    }
+  }
+
+  else if (state.bossId === 'queen') {
+    if (r <= 3) {
+      // heal 3
       pushHistory();
       state.hp = Math.min(state.maxHP, state.hp + 3);
       render();
-      showAbilityMsg('Queen heals +3', '#b7ffb7');
-    } else showAbilityMsg('No effect', '#9ec5ff');
-  } else if (state.bossId === 'king') {
+      paintAbility(`DMG ${base} + HEAL +3`, '#b7ffb7');
+    } else {
+      paintAbility(`DMG ${base} (no ability)`, '#9ec5ff');
+    }
+  }
+
+  else if (state.bossId === 'king') {
     if (r <= 2) {
+      // purge poison
+      let note = 'Purge (no POI)';
       if (state.poison > 0) {
-        pushHistory(); state.poison = 0; render();
-        showAbilityMsg('King purges POI', '#ffbdbd');
-      } else showAbilityMsg('Purge (no POI)', '#ffdfbd');
-    } else showAbilityMsg('No effect', '#9ec5ff');
-  } else if (state.bossId === 'joker') {
-    if (r >= 8 && r <= 10) showAbilityMsg('ATK ×2 this turn!', '#ffd38a');
-    else showAbilityMsg('No effect', '#9ec5ff');
+        pushHistory();
+        state.poison = 0;
+        render();
+        note = 'Purge POI';
+      }
+      paintAbility(`DMG ${base} + ${note}`, '#ffdfbd');
+    } else {
+      paintAbility(`DMG ${base} (no ability)`, '#9ec5ff');
+    }
+  }
+
+  else if (state.bossId === 'joker') {
+    if (r >= 8 && r <= 10) {
+      const dmg = base * 2;
+      paintAbility(`DMG ${dmg} (x2)`, '#ffd38a');
+    } else {
+      paintAbility(`DMG ${base} (no ability)`, '#9ec5ff');
+    }
   }
 }
 
@@ -454,7 +516,7 @@ function initBossButtons(){
     const btn = document.createElement('button');
     btn.className = 'boss-btn';
     btn.dataset.id = b.id;
-    btn.innerHTML = `<strong>${b.label}</strong><small>${b.name} • HP ${b.maxHP}</small>`;
+    btn.innerHTML = `<strong>${b.label}</strong><small>${b.name} • HP ${b.maxHP} • DMG ${b.atk}</small>`;
     btn.addEventListener('click', ()=> pickBoss(b.id));
     frag.appendChild(btn);
   });
@@ -470,7 +532,7 @@ function initControls(){
   });
   els.queenHeal.addEventListener('click', ()=> adjustHP(+3));
 
-  // CHANGED: Blue button now increments poison by +1
+  // Blue button increments poison +1
   els.applyPoison.addEventListener('click', ()=> adjustPoison(+1));
 
   els.undoBtn.addEventListener('click', undo);
