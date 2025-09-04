@@ -17,7 +17,6 @@
   .card{background:linear-gradient(180deg,var(--panel),#121722);
     border:1px solid #272c3b; border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.35)}
   .grid{display:grid; gap:10px}
-  .g2{grid-template-columns:1fr 1fr}
   .g3{grid-template-columns:repeat(3,1fr)}
   .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
   .pill{background:#141a24;border:1px solid #293143;border-radius:999px;padding:6px 10px;color:#cfe3ff;font-size:12px}
@@ -29,7 +28,6 @@
   .btn:active{transform:translateY(1px)}
   .btn.ghost{background:transparent}
   .btn.red{background:#2a1215;border-color:#3a1a1e;color:#ffdada}
-  .btn.green{background:#0f2a1d;border-color:#17472f;color:#d7ffe9}
   .btn.yellow{background:#2e2613;border-color:#463a16;color:#fff1c2}
   .btn.blue{background:#14243b;border-color:#1e3554;color:#d9ecff}
   .hint{font-size:12px;color:#95a3ba}
@@ -114,6 +112,11 @@
           <button class="btn" id="poiMinus">POI -1</button>
           <div class="pill">POI: <span id="poiVal">0</span></div>
         </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn ghost" id="undoBtn">Undo</button>
+          <button class="btn ghost" id="resetBoss">Reset This Boss</button>
+          <button class="btn ghost" id="clearSaveBtn">Clear Save</button>
+        </div>
         <div class="hint" style="margin-top:6px">
           Boss Turn: POI ticks, ability bonus (if any) applied to DMG, Shield reduces DMG, then next Player round starts (Plays reset).
         </div>
@@ -126,8 +129,6 @@
       <button class="btn red" data-delta="-6">Lucky 1 (−6)</button>
       <button class="btn" data-delta="+1">+1 HP</button>
       <button class="btn" data-delta="+3">+3 HP</button>
-      <button class="btn ghost" id="undoBtn">Undo</button>
-      <button class="btn ghost" id="resetBoss">Reset This Boss</button>
     </div>
 
     <!-- Boss picker -->
@@ -214,28 +215,67 @@ const els = {
 
   undoBtn: document.getElementById('undoBtn'),
   resetBoss: document.getElementById('resetBoss'),
+  clearSaveBtn: document.getElementById('clearSaveBtn'),
   bossButtons: document.getElementById('bossButtons')
 };
 
-/* ----------------- Helpers ----------------- */
-function save(){ localStorage.setItem('rc.fixed', JSON.stringify(state)); }
+/* ----------------- Helpers (freeze-safe) ----------------- */
+function vibrate(ms=15){
+  try { if (navigator && typeof navigator.vibrate === 'function') navigator.vibrate(ms); } catch {}
+}
+
+// Persist a lean snapshot (exclude history)
+function save(){
+  const { history, ...lean } = state;
+  try {
+    localStorage.setItem('rc.fixed', JSON.stringify(lean));
+  } catch (e) {
+    // If storage quota hit, try a smaller snapshot (drop ability flags too)
+    const { jackPlus2, jokerTimes2, ...smaller } = lean;
+    try { localStorage.setItem('rc.fixed', JSON.stringify(smaller)); } catch {}
+  }
+}
+
 function load(){
   const raw = localStorage.getItem('rc.fixed');
-  if(raw){ try{ state = JSON.parse(raw);}catch{} }
+  if(!raw) return;
+  try {
+    const loaded = JSON.parse(raw);
+    state = { ...state, ...loaded, history: [] }; // keep history empty
+  } catch {}
 }
+
+// Keep undo small and cheap
 function pushHistory(){
-  state.history.push(JSON.parse(JSON.stringify(state)));
-  if(state.history.length>30) state.history.shift();
+  const snapshot = {
+    bossId: state.bossId,
+    name: state.name,
+    hp: state.hp,
+    maxHP: state.maxHP,
+    atk: state.atk,
+    heroHP: state.heroHP,
+    plays: state.plays,
+    playsMax: state.playsMax,
+    diamondExtraEarned: state.diamondExtraEarned,
+    shield: state.shield,
+    poison: state.poison,
+    round: state.round,
+    jackPlus2: state.jackPlus2,
+    jokerTimes2: state.jokerTimes2,
+  };
+  state.history.push(snapshot);
+  if (state.history.length > 10) state.history.shift();
 }
+
 function undo(){
   const last = state.history.pop();
   if(!last) return;
-  state = last;
+  state = { ...state, ...last, history: state.history };
   render();
 }
+
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 function pct(){ return Math.max(0, Math.min(100, (state.hp/state.maxHP)*100)); }
-function vibrate(ms=15){ if(navigator.vibrate) navigator.vibrate(ms); }
 
 /* ----------------- Rendering ----------------- */
 function render(){
@@ -374,8 +414,6 @@ function doHitRoll(){
 
   els.hitResult.textContent = result;
   vibrate(25);
-
-  // If boss drops to 0, auto-advance nothing else—players will handle rewards manually
 }
 
 /* ----------------- Boss ability + turn ----------------- */
@@ -451,7 +489,7 @@ function initQuickDamageButtons(){
     btn.addEventListener('click', ()=>{
       const d = Number(btn.getAttribute('data-delta'));
       if(d < 0){
-        // damage to boss counts as a play only if it's the Hit buttons
+        // Using quick Hit buttons spends a play
         if(d === -5 || d === -6){
           if(state.plays <= 0){ els.hitResult.textContent = 'No plays left'; return; }
           spendPlay();
@@ -481,7 +519,7 @@ function initBossPicker(){
 /* ----------------- Events ----------------- */
 function init(){
   load();
-  if(!state || !state.maxHP){ pickBoss('jack'); }
+  if(!state || !state.maxHP){ pickBoss('jack'); } else { render(); }
 
   els.hpMinus.addEventListener('click', ()=> applyHeroHP(-1));
   els.hpPlus.addEventListener('click',  ()=> applyHeroHP(+1));
@@ -496,10 +534,13 @@ function init(){
 
   els.undoBtn.addEventListener('click', undo);
   els.resetBoss.addEventListener('click', resetThisBoss);
+  els.clearSaveBtn.addEventListener('click', ()=>{
+    try { localStorage.removeItem('rc.fixed'); } catch {}
+    pickBoss(state.bossId);
+  });
 
   initQuickDamageButtons();
   initBossPicker();
-  render();
 }
 init();
 </script>
