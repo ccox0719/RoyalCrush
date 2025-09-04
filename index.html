@@ -111,7 +111,9 @@
       <div class="card" style="padding:10px">
         <div class="section-title">Change Boss</div>
         <div class="row" id="bossButtons"></div>
-        <div class="hint" style="margin-top:6px">Jacks 8/2 (≤3 +2) • Queens 12/4 (≤3 heal3) • Kings 16/5 (≤2 purge) • Joker 24/6 (8–10 ×2)</div>
+        <div class="hint" style="margin-top:6px">
+          Jacks 8/2 (≤3 +2) • Queens 14/4 (≤3 heal3) • Kings 18/5 (≤2 purge) • Joker 26/6 (8–10 ×2)
+        </div>
       </div>
     </div>
   </div>
@@ -135,7 +137,7 @@
             <button class="btn" id="hpAPlus">+1</button>
           </div>
           <div class="row" style="margin-top:6px">
-            <div class="pill">Plays: <span id="playsA">2</span> / <span id="playsMaxA">2</span></div>
+            <div class="pill">Plays: <span id="playsA">1</span> / <span id="playsMaxA">1</span></div>
             <div class="pill">Shield: <span id="shieldA">0</span></div>
           </div>
         </div>
@@ -180,7 +182,7 @@
             <button class="btn" id="hpBPlus">+1</button>
           </div>
           <div class="row" style="margin-top:6px">
-            <div class="pill">Plays: <span id="playsB">2</span> / <span id="playsMaxB">2</span></div>
+            <div class="pill">Plays: <span id="playsB">1</span> / <span id="playsMaxB">1</span></div>
             <div class="pill">Shield: <span id="shieldB">0</span></div>
           </div>
         </div>
@@ -209,7 +211,7 @@
     </div>
   </div>
 
-  <!-- Footer controls moved here -->
+  <!-- Footer controls -->
   <div class="footer-controls">
     <label class="row" style="gap:6px">
       <input type="checkbox" id="perfModeChk" />
@@ -218,26 +220,27 @@
     <button class="btn ghost" id="clearSaveBtn">Clear Save</button>
   </div>
 
-  <p class="hint" style="margin-top:8px">State auto-saves locally. Two heroes act with their own plays, shields, and class perks.</p>
+  <p class="hint" style="margin-top:8px">
+    Each hero has <b>1 play/round</b>. ♦ on a hit grants <b>+1 play</b> (cap 2; Mage cap 3).
+  </p>
 </div>
 
 <script>
 /* ------------ Constants (boss & system) ------------ */
 const bosses = [
   {id:'jack',  label:'J♣ J♠ J♥ J♦', name:'Jacks',  maxHP:8,  atk:2},
-  {id:'queen', label:'Q♣ Q♠ Q♥ Q♦', name:'Queens', maxHP:12, atk:4},
-  {id:'king',  label:'K♣ K♠ K♥ K♦', name:'Kings',  maxHP:16, atk:5},
-  {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:24, atk:6},
+  {id:'queen', label:'Q♣ Q♠ Q♥ Q♦', name:'Queens', maxHP:14, atk:4}, // bumped
+  {id:'king',  label:'K♣ K♠ K♥ K♦', name:'Kings',  maxHP:18, atk:5}, // bumped
+  {id:'joker', label:'Joker Joker',  name:'Jokers', maxHP:26, atk:6}, // bumped
 ];
 const DMG_PER_HIT = 5;
-const LUCKY_EXTRA = 1; // global +1, Mage adds +1 more
-const BASE_PLAYS_PER_HERO = 2;
-const BASE_DIAMOND_CAP = 2;
+const BASE_PLAYS_PER_HERO = 1;        // changed: 1 play per hero
+const BASE_DIAMOND_CAP = 2;           // ♦ cap (Mage +1)
 const BASE_SHIELD = 3;
 const BASE_HEAL = 3;
 const BASE_POI = 1;
 
-/* ------------ Class modifiers ------------ */
+/* ------------ Class modifiers (HP kept as before) ------------ */
 const classMods = {
   Knight:   { maxHP:35, diamondCap:+0, luckyExtra:+0, shieldBonus:+1, healBonus:+0, poiBonus:+0 },
   Mage:     { maxHP:30, diamondCap:+1, luckyExtra:+1, shieldBonus:+0, healBonus:+0, poiBonus:+0 },
@@ -248,12 +251,9 @@ const classMods = {
 /* ------------ State ------------ */
 let state = {
   perfMode:false,
-
   boss:{ id:'jack', name:'Jacks', hp:8, maxHP:8, atk:2, round:1, poison:0, jackPlus2:false, jokerTimes2:false },
-
-  A:{ cls:'Knight', hp:35, maxHP:35, plays:2, playsMax:2, diamondEarned:0, shield:0 },
-  B:{ cls:'Mage',   hp:30, maxHP:30, plays:2, playsMax:2, diamondEarned:0, shield:0 },
-
+  A:{ cls:'Knight', hp:35, maxHP:35, plays:1, playsMax:1, diamondEarned:0, shield:0 },
+  B:{ cls:'Mage',   hp:30, maxHP:30, plays:1, playsMax:1, diamondEarned:0, shield:0 },
   history:[]
 };
 
@@ -261,34 +261,24 @@ let state = {
 const $ = id => document.getElementById(id);
 const els = {
   root: document.documentElement,
-
-  // footer controls (moved)
-  perfChk: $('perfModeChk'),
-  clearSave: $('clearSaveBtn'),
-
-  bossName: $('bossName'),
-  bossStatsSub: $('bossStatsSub'),
+  // footer
+  perfChk: $('perfModeChk'), clearSave: $('clearSaveBtn'),
+  // boss
+  bossName: $('bossName'), bossStatsSub: $('bossStatsSub'),
   hpNow: $('hpNow'), hpMax: $('hpMax'), hpBar: $('hpBar'),
   roundOut: $('roundOut'), abilityOut: $('abilityOut'),
-
-  bossButtons: $('bossButtons'),
-  bossTurnBtn: $('bossTurnBtn'),
-  abilityBtn: $('abilityBtn'),
+  bossButtons: $('bossButtons'), bossTurnBtn: $('bossTurnBtn'), abilityBtn: $('abilityBtn'),
   bossTarget: $('bossTarget'),
   poiPlus: $('poiPlus'), poiMinus: $('poiMinus'), poiVal: $('poiVal'),
   resetBoss: $('resetBoss'),
-
   // Hero A
   classA: $('classA'), hpA: $('hpA'), hpAMinus: $('hpAMinus'), hpAPlus: $('hpAPlus'),
   playsA: $('playsA'), playsMaxA: $('playsMaxA'), shieldA: $('shieldA'),
   valA: $('valA'), suitA: $('suitA'), rollA: $('rollA'), rollOutA: $('rollOutA'), resultA: $('resultA'),
-
   // Hero B
   classB: $('classB'), hpB: $('hpB'), hpBMinus: $('hpBMinus'), hpBPlus: $('hpBPlus'),
   playsB: $('playsB'), playsMaxB: $('playsMaxB'), shieldB: $('shieldB'),
   valB: $('valB'), suitB: $('suitB'), rollB: $('rollB'), rollOutB: $('rollOutB'), resultB: $('resultB'),
-
-  bossButtonsContainer: $('bossButtons')
 };
 
 /* ------------ Perf-safe utils ------------ */
@@ -306,45 +296,38 @@ function load(){
   try{
     const loaded = JSON.parse(raw);
     state = {...state, ...loaded, history:[]};
+    // force plays to new rule on load so old saves don't keep 2
+    ['A','B'].forEach(w=>{
+      state[w].plays = BASE_PLAYS_PER_HERO;
+      state[w].playsMax = BASE_PLAYS_PER_HERO;
+      state[w].diamondEarned = 0;
+    });
   }catch{}
 }
 function scheduleRender(){ if(rafDirty) return; rafDirty=true; requestAnimationFrame(render); }
-function vibrate(ms=10){ if(state.perfMode) return; try{ if(navigator.vibrate) navigator.vibrate(ms);}catch{} }
 
 /* ------------ Helpers ------------ */
 function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
 function pushHistory(){
   const snap = JSON.parse(JSON.stringify(state));
-  snap.history = []; // no nesting
+  snap.history = [];
   state.history.push(snap);
   if(state.history.length>5) state.history.shift();
 }
-function undo(){
-  const last = state.history.pop();
-  if(!last) return;
-  state = last;
-  scheduleRender();
-}
-
 function heroRef(which){ return which==='A' ? state.A : state.B; }
 function applyBossHP(d){ state.boss.hp = clamp(state.boss.hp + d, 0, state.boss.maxHP); }
 function applyHeroHP(h, d){ h.hp = clamp(h.hp + d, 0, h.maxHP); }
-
-function computeLuckyBonus(h){
-  const base = 1 + (classMods[h.cls]?.luckyExtra || 0);
-  return base; // nat-1 adds this much
-}
+function computeLuckyBonus(h){ return 1 + (classMods[h.cls]?.luckyExtra || 0); }
 function computeDiamondCap(h){ return BASE_DIAMOND_CAP + (classMods[h.cls]?.diamondCap || 0); }
-function shieldValue(h){ return BASE_SHIELD + (classMods[h.cls]?.shieldBonus || 0); }
-function healValue(h){ return BASE_HEAL + (classMods[h.cls]?.healBonus || 0); }
-function poiValue(h){ return BASE_POI + (classMods[h.cls]?.poiBonus || 0); }
+function shieldValue(h){ return 3 + (classMods[h.cls]?.shieldBonus || 0); }
+function healValue(h){ return 3 + (classMods[h.cls]?.healBonus || 0); }
+function poiValue(h){ return 1 + (classMods[h.cls]?.poiBonus || 0); }
 
 /* ------------ Boss switching/reset ------------ */
 function pickBoss(id){
   const b = bosses.find(x=>x.id===id);
   pushHistory();
   state.boss = { id:b.id, name:b.name, hp:b.maxHP, maxHP:b.maxHP, atk:b.atk, round:1, poison:0, jackPlus2:false, jokerTimes2:false };
-  // reset round for heroes (keep HP)
   ['A','B'].forEach(w=>{
     const h = heroRef(w);
     h.plays = BASE_PLAYS_PER_HERO;
@@ -358,7 +341,6 @@ function resetBoss(){ pickBoss(state.boss.id); }
 
 /* ------------ Boss ability + turn ------------ */
 function rollD12(){ return Math.floor(Math.random()*12)+1; }
-
 function bossAbility(){
   const r = rollD12();
   let msg = `d12: ${r} • DMG ${state.boss.atk}`;
@@ -379,60 +361,42 @@ function bossAbility(){
     state.boss.jokerTimes2 = (r >= 8 && r <= 10);
     msg = state.boss.jokerTimes2 ? `d12: ${r} • DMG ${state.boss.atk*2} (×2)` : `d12: ${r} • DMG ${state.boss.atk}`;
   }
-  document.getElementById('abilityOut').textContent = msg;
+  els.abilityOut.textContent = msg;
   scheduleRender();
 }
-
 function bossTurn(){
   pushHistory();
-
-  // 1) POI tick on boss
+  // 1) POI tick
   if(state.boss.poison > 0){
     state.boss.hp = clamp(state.boss.hp - state.boss.poison, 0, state.boss.maxHP);
   }
-
-  // 2) Compute DMG with ability flags
+  // 2) Damage with flags
   let dmg = state.boss.atk;
   if(state.boss.id==='jack' && state.boss.jackPlus2) dmg += 2;
   if(state.boss.id==='joker' && state.boss.jokerTimes2) dmg *= 2;
-
-  // 3) Choose target
-  let target = document.getElementById('bossTarget').value;
-  let h = null;
-  if(target==='AUTO'){
-    h = (state.A.hp <= state.B.hp) ? state.A : state.B; // lowest HP
-  } else {
-    h = (target==='A') ? state.A : state.B;
-  }
-
-  // 4) Apply shield of target only
+  // 3) Target
+  const tgtSel = els.bossTarget.value;
+  let h = (tgtSel==='AUTO') ? ((state.A.hp <= state.B.hp)?state.A:state.B) : (tgtSel==='A'?state.A:state.B);
+  // 4) Shield of target
   const reduced = Math.max(0, dmg - h.shield);
   h.shield = 0;
   h.hp = clamp(h.hp - reduced, 0, h.maxHP);
-
-  // 5) Clear flags and advance round; reset plays for both heroes
+  // 5) Clear flags & next round
   state.boss.jackPlus2 = false;
   state.boss.jokerTimes2 = false;
   state.boss.round += 1;
-
   ['A','B'].forEach(w=>{
     const he = heroRef(w);
     he.plays = BASE_PLAYS_PER_HERO;
     he.playsMax = BASE_PLAYS_PER_HERO;
     he.diamondEarned = 0;
   });
-
-  document.getElementById('abilityOut').textContent = `Boss dealt ${reduced} to ${h===state.A?'Hero A':'Hero B'}`;
+  els.abilityOut.textContent = `Boss dealt ${reduced} to ${h===state.A?'Hero A':'Hero B'}`;
   scheduleRender();
 }
 
-/* ------------ Hero actions (roll to hit) ------------ */
-function spendPlay(h){
-  if(h.plays<=0) return false;
-  h.plays -= 1;
-  scheduleRender();
-  return true;
-}
+/* ------------ Hero actions ------------ */
+function spendPlay(h){ if(h.plays<=0) return false; h.plays -= 1; scheduleRender(); return true; }
 function grantDiamond(h){
   const cap = computeDiamondCap(h);
   if(h.diamondEarned >= cap) return;
@@ -441,46 +405,25 @@ function grantDiamond(h){
   h.playsMax += 1;
   scheduleRender();
 }
-
 function doHeroRoll(which){
   const h = heroRef(which);
   const val = Number((which==='A'?els.valA.value:els.valB.value));
   const suit = (which==='A'?els.suitA.value:els.suitB.value);
   const outRoll = (which==='A'?els.rollOutA:els.rollOutB);
   const outRes  = (which==='A'?els.resultA:els.resultB);
-
   if(h.plays<=0){ outRes.textContent='No plays left'; return; }
-
   const r = rollD12();
   outRoll.textContent = `d12: ${r}`;
-
-  // Fumble
-  if(r===12){
-    spendPlay(h);
-    applyHeroHP(h, -1);
-    outRes.textContent = 'FUMBLE: self-1';
-    return;
-  }
-  // Miss
-  if(r > val){
-    spendPlay(h);
-    outRes.textContent = 'Miss';
-    return;
-  }
-
-  // Hit!
+  if(r===12){ spendPlay(h); applyHeroHP(h, -1); outRes.textContent = 'FUMBLE: self-1'; return; }
+  if(r>val){  spendPlay(h); outRes.textContent = 'Miss'; return; }
   if(!spendPlay(h)) return;
   let dmg = DMG_PER_HIT;
-  if(r===1) dmg += computeLuckyBonus(h); // +1 (Mage +2 total)
-
+  if(r===1) dmg += computeLuckyBonus(h);
   applyBossHP(-dmg);
-
-  // Suit effects
   if(suit==='club'){ h.shield += shieldValue(h); outRes.textContent = `Hit −${dmg} • ♣ Shield +${shieldValue(h)}`; }
   else if(suit==='heart'){ applyHeroHP(h, +healValue(h)); outRes.textContent = `Hit −${dmg} • ♥ Heal +${healValue(h)}`; }
-  else if(suit==='spade'){ state.boss.poison += poiValue(h); document.getElementById('poiVal').textContent = state.boss.poison; outRes.textContent = `Hit −${dmg} • ♠ POI +${poiValue(h)}`; }
+  else if(suit==='spade'){ state.boss.poison += poiValue(h); els.poiVal.textContent = state.boss.poison; outRes.textContent = `Hit −${dmg} • ♠ POI +${poiValue(h)}`; }
   else if(suit==='diamond'){ grantDiamond(h); outRes.textContent = `Hit −${dmg} • ♦ +1 play (cap ${computeDiamondCap(h)})`; }
-
   scheduleRender();
 }
 
@@ -495,7 +438,7 @@ function initBossPicker(){
     el.addEventListener('click', ()=> pickBoss(b.id), {passive:true});
     frag.appendChild(el);
   });
-  els.bossButtonsContainer.appendChild(frag);
+  els.bossButtons.appendChild(frag);
 }
 function initQuickButtons(){
   document.querySelectorAll('[data-delta]').forEach(btn=>{
@@ -511,9 +454,9 @@ function initQuickButtons(){
 /* ------------ Class changes ------------ */
 function applyClass(which, cls){
   const h = heroRef(which);
-  h.cls = cls;
   const prevMax = h.maxHP || classMods[h.cls]?.maxHP || 30;
   const pct = h.maxHP ? (h.hp / h.maxHP) : 1;
+  h.cls = cls;
   const nextMax = classMods[cls]?.maxHP || 30;
   h.maxHP = nextMax;
   h.hp = clamp(Math.round(nextMax * pct), 0, nextMax);
@@ -523,68 +466,56 @@ function applyClass(which, cls){
 /* ------------ Render ------------ */
 function render(){
   rafDirty=false;
-
-  // Perf class
   document.documentElement.classList.toggle('perf', !!state.perfMode);
-
   // Boss
-  document.getElementById('bossName').textContent = state.boss.name;
-  document.getElementById('bossStatsSub').textContent = `HP ${state.boss.hp}/${state.boss.maxHP} • DMG ${state.boss.atk}`;
-  document.getElementById('hpNow').textContent = state.boss.hp;
-  document.getElementById('hpMax').textContent = state.boss.maxHP;
-  document.getElementById('hpBar').style.width = Math.max(0, Math.min(100, (state.boss.hp/state.boss.maxHP)*100)) + '%';
-  document.getElementById('poiVal').textContent = state.boss.poison;
-  document.getElementById('roundOut').textContent = `Round ${state.boss.round}`;
-
-  // Hero A
-  document.getElementById('hpA').textContent = state.A.hp;
-  document.getElementById('playsA').textContent = state.A.plays;
-  document.getElementById('playsMaxA').textContent = state.A.playsMax;
-  document.getElementById('shieldA').textContent = state.A.shield;
-
-  // Hero B
-  document.getElementById('hpB').textContent = state.B.hp;
-  document.getElementById('playsB').textContent = state.B.plays;
-  document.getElementById('playsMaxB').textContent = state.B.playsMax;
-  document.getElementById('shieldB').textContent = state.B.shield;
-
+  els.bossName.textContent = state.boss.name;
+  els.bossStatsSub.textContent = `HP ${state.boss.hp}/${state.boss.maxHP} • DMG ${state.boss.atk}`;
+  els.hpNow.textContent = state.boss.hp;
+  els.hpMax.textContent = state.boss.maxHP;
+  els.hpBar.style.width = Math.max(0, Math.min(100, (state.boss.hp/state.boss.maxHP)*100)) + '%';
+  els.poiVal.textContent = state.boss.poison;
+  els.roundOut.textContent = `Round ${state.boss.round}`;
+  // Heroes
+  els.hpA.textContent = state.A.hp; els.hpB.textContent = state.B.hp;
+  els.playsA.textContent = state.A.plays; els.playsB.textContent = state.B.plays;
+  els.playsMaxA.textContent = state.A.playsMax; els.playsMaxB.textContent = state.B.playsMax;
+  els.shieldA.textContent = state.A.shield; els.shieldB.textContent = state.B.shield;
   scheduleSave();
 }
 
 /* ------------ Init ------------ */
 function init(){
   load();
-  // Default boss if first time
+  // default boss if first time
   if(!state.boss || !state.boss.maxHP){ pickBoss('jack'); }
-
   initBossPicker();
   initQuickButtons();
 
-  // Footer controls (now at bottom)
+  // Footer controls
   els.perfChk.checked = !!state.perfMode;
   els.perfChk.addEventListener('change', e=>{ state.perfMode = !!e.target.checked; scheduleRender(); });
   els.clearSave.addEventListener('click', ()=>{ try{ localStorage.removeItem('rc.two.fast'); }catch{} pickBoss(state.boss.id); });
 
   // Boss controls
-  document.getElementById('abilityBtn').addEventListener('click', bossAbility);
-  document.getElementById('bossTurnBtn').addEventListener('click', bossTurn);
-  document.getElementById('poiPlus').addEventListener('click', ()=>{ pushHistory(); state.boss.poison += 1; scheduleRender(); }, {passive:true});
-  document.getElementById('poiMinus').addEventListener('click', ()=>{ pushHistory(); state.boss.poison = Math.max(0, state.boss.poison-1); scheduleRender(); }, {passive:true});
-  document.getElementById('resetBoss').addEventListener('click', resetBoss);
+  els.abilityBtn.addEventListener('click', bossAbility);
+  els.bossTurnBtn.addEventListener('click', bossTurn);
+  els.poiPlus.addEventListener('click', ()=>{ pushHistory(); state.boss.poison += 1; scheduleRender(); }, {passive:true});
+  els.poiMinus.addEventListener('click', ()=>{ pushHistory(); state.boss.poison = Math.max(0, state.boss.poison-1); scheduleRender(); }, {passive:true});
+  els.resetBoss.addEventListener('click', resetBoss);
 
   // Hero A events
-  document.getElementById('classA').addEventListener('change', e=> applyClass('A', e.target.value));
-  document.getElementById('hpAMinus').addEventListener('click', ()=>{ pushHistory(); applyHeroHP(state.A, -1); scheduleRender(); });
-  document.getElementById('hpAPlus').addEventListener('click',  ()=>{ pushHistory(); applyHeroHP(state.A, +1); scheduleRender(); });
-  document.getElementById('rollA').addEventListener('click',   ()=> doHeroRoll('A'));
+  els.classA.addEventListener('change', e=> applyClass('A', e.target.value));
+  $('hpAMinus').addEventListener('click', ()=>{ pushHistory(); applyHeroHP(state.A, -1); scheduleRender(); });
+  $('hpAPlus').addEventListener('click',  ()=>{ pushHistory(); applyHeroHP(state.A, +1); scheduleRender(); });
+  $('rollA').addEventListener('click',   ()=> doHeroRoll('A'));
 
   // Hero B events
-  document.getElementById('classB').addEventListener('change', e=> applyClass('B', e.target.value));
-  document.getElementById('hpBMinus').addEventListener('click', ()=>{ pushHistory(); applyHeroHP(state.B, -1); scheduleRender(); });
-  document.getElementById('hpBPlus').addEventListener('click',  ()=>{ pushHistory(); applyHeroHP(state.B, +1); scheduleRender(); });
-  document.getElementById('rollB').addEventListener('click',    ()=> doHeroRoll('B'));
+  els.classB.addEventListener('change', e=> applyClass('B', e.target.value));
+  $('hpBMinus').addEventListener('click', ()=>{ pushHistory(); applyHeroHP(state.B, -1); scheduleRender(); });
+  $('hpBPlus').addEventListener('click',  ()=>{ pushHistory(); applyHeroHP(state.B, +1); scheduleRender(); });
+  $('rollB').addEventListener('click',    ()=> doHeroRoll('B'));
 
-  // Initial class application to set maxHP correctly
+  // Ensure classes apply maxHP properly at boot
   applyClass('A', state.A.cls);
   applyClass('B', state.B.cls);
 
