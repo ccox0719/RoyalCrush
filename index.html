@@ -55,7 +55,6 @@
   .modal{width:min(920px,94vw); max-height:86vh; overflow:auto; background:#151922; border:1px solid #2a3040; border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.5); padding:14px}
   .modal h3{margin:0 0 8px; font-size:16px}
   .list{border:1px solid #2a3142; border-radius:10px; padding:10px}
-  /* Higher-contrast generic tags */
   .tag{
     display:inline-block; border:1px solid #3a69c9; border-radius:8px;
     padding:6px 8px; margin:4px; font-size:13px; background:#0b1b3a; color:#eaf2ff;
@@ -224,7 +223,7 @@ const legendaryEffects={
   Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
 };
 
-/* Generics by defeated rank (tie directly to face) */
+/* Generics by defeated rank */
 const GENERICS_ALL={
   training:{id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
   sprint:{id:'sprint',label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
@@ -239,12 +238,7 @@ const GENERICS_ALL={
   trick:{id:'trick',label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
   ward:{id:'ward',label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
 };
-const GENERIC_BY_RANK={
-  J:['training','sprint','parry'],
-  Q:['tactics','rally','scout'],
-  K:['resolve','fortify','purge'],
-  X:['spark','trick','ward'],
-};
+const GENERIC_BY_RANK={ J:['training','sprint','parry'], Q:['tactics','rally','scout'], K:['resolve','fortify','purge'], X:['spark','trick','ward'] };
 
 /* =================== Gauntlet =================== */
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
@@ -286,8 +280,7 @@ function toast(msg,kind='info'){
 }
 function logLine(text){
   const el=document.createElement('div'); el.className='line'; el.textContent=text;
-  const log=$('bossLog'); log.prepend(el); // newest first
-  // keep last ~8
+  const log=$('bossLog'); log.prepend(el);
   while(log.children.length>8) log.removeChild(log.lastChild);
 }
 function save(){try{localStorage.setItem('rc.fullgauntlet',JSON.stringify(S))}catch{}}
@@ -437,19 +430,36 @@ function bossAbilityResolve(){
   if(b.rank==='X'){ b.jokerTimes2=(r>=8&&r<=10); return `Joker roll ${r}: ${b.jokerTimes2?'x2 damage':'no double'}`; }
   return `roll ${r}`;
 }
+
+/* NEW: target selection prioritizing shields */
+function pickTargetForBoss(){
+  const cand=[];
+  if (S.A.hp>0 && S.A.shield>0) cand.push({k:'A', hp:S.A.hp, sh:S.A.shield});
+  if (S.B.hp>0 && S.B.shield>0) cand.push({k:'B', hp:S.B.hp, sh:S.B.shield});
+  if (cand.length===1) return cand[0].k;
+  if (cand.length===2){
+    if (cand[0].sh !== cand[1].sh) return cand[0].sh>cand[1].sh ? cand[0].k : cand[1].k;
+    return cand[0].hp<=cand[1].hp ? cand[0].k : cand[1].k; // tie → lower HP
+  }
+  // No shielded targets → lowest HP alive
+  return getLowestAliveHeroKey(); // may be null if both dead
+}
+
 function bossAttackResolve(){
   if(S.boss.hp<=0) return 'Boss is down';
   let dmg=S.boss.atk;
   if(S.boss.rank==='J'&&S.boss.jackPlus2) dmg+=2;
   if(S.boss.rank==='X'&&S.boss.jokerTimes2) dmg*=2;
 
-  const tgtKey = getLowestAliveHeroKey();
+  const tgtKey = pickTargetForBoss();
   if(!tgtKey) return 'No living targets';
   const h=S[tgtKey];
-  const reduced=Math.max(0,dmg-h.shield); h.shield=0;
-  h.hp=clamp(h.hp-reduced,0,h.maxHP);
+
+  const reduced=Math.max(0,dmg-h.shield);
+  h.shield = 0;               // consume shield regardless of reduction
+  h.hp = clamp(h.hp - reduced, 0, h.maxHP);
   if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${tgtKey} defeated!`,'bad'); }
-  return `Boss dealt ${reduced} to ${tgtKey}`;
+  return `Boss targeted ${tgtKey} (shield first) and dealt ${reduced}`;
 }
 function startNextRound(){
   S.boss.round += 1;
@@ -545,7 +555,7 @@ function autoTrashLowest(h,n=1){
   for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
 }
 
-/* NEW: auto add upgrade 5/6/7/9 to each hero when a royal dies */
+/* Auto add upgrade 5/6/7/9 to each hero when a royal dies */
 function addUpgradeCardToHero(h, rank, suit){
   const map={J:5,Q:6,K:7,X:9};
   let v = map[rank];
