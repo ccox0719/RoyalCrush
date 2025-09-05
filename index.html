@@ -208,9 +208,47 @@ function drawOne(w){const h=S[w];if(h.deck.length===0){if(h.discard.length===0)r
 function drawUp(w,size=4){const h=S[w];while(h.hand.length<size&&(h.deck.length>0||h.discard.length>0))drawOne(w)}
 function discardHand(w){const h=S[w]; while(h.hand.length){h.discard.push(h.hand.pop())}}
 
-/* ==== Lowest-HP heal routing ==== */
-function getLowestHero(){const a=S.A,b=S.B;if(a.hp<=0&&b.hp>0)return a;if(b.hp<=0&&a.hp>0)return b;return (a.hp<=b.hp)?a:b}
-function teamHeal(n){const t=getLowestHero();const wasDown=t.down||t.hp<=0;t.hp=clamp(t.hp+n,0,t.maxHP);if(wasDown&&t.hp>0){t.down=false;toast('Revived the lowest-HP hero','good')}}
+/* ==== Lowest-HP helpers (alive-aware) ==== */
+function getLowestHero(){ // legacy (can return dead)
+  const a=S.A,b=S.B;
+  if(a.hp<=0 && b.hp>0) return a;
+  if(b.hp<=0 && a.hp>0) return b;
+  return (a.hp<=b.hp)?a:b;
+}
+function getLowestAliveHero(){
+  const a=S.A.hp>0 ? S.A : null;
+  const b=S.B.hp>0 ? S.B : null;
+  if(a && b) return (a.hp<=b.hp)?a:b;
+  if(a) return a;
+  if(b) return b;
+  return null; // both dead
+}
+function getLowestAliveHeroKey(){
+  const a=S.A.hp>0 ? {h:S.A,k:'A'} : null;
+  const b=S.B.hp>0 ? {h:S.B,k:'B'} : null;
+  if(a && b) return (a.h.hp<=b.h.hp)?'A':'B';
+  if(a) return 'A';
+  if(b) return 'B';
+  return null;
+}
+/* Damage the lowest ALIVE hero; skip if none alive */
+function teamHurt(n){
+  const t=getLowestAliveHero();
+  if(!t) return; // both down: skip
+  t.hp = clamp(t.hp - n, 0, t.maxHP);
+  if(t.hp<=0) t.down = true;
+}
+/* Team heal still targets lowest HP (can revive) */
+function teamHeal(n){
+  const a=S.A,b=S.B;
+  // prefer reviving a downed hero if tie at 0
+  const target = (a.hp<=0 && b.hp>0) ? a :
+                 (b.hp<=0 && a.hp>0) ? b :
+                 (a.hp<=b.hp ? a : b);
+  const wasDown = target.down || target.hp<=0;
+  target.hp = clamp(target.hp + n, 0, target.maxHP);
+  if(wasDown && target.hp>0){ target.down=false; toast('Revived the lowest-HP hero','good'); }
+}
 
 /* ==== Rendering ==== */
 function render(){
@@ -269,10 +307,16 @@ function bossTurn(){
   if(S.boss.poison>0){S.boss.hp=clamp(S.boss.hp-S.boss.poison,0,S.boss.maxHP)}
   if(S.boss.hp<=0){onBossDefeated('by Poison');return}
   let dmg=S.boss.atk; if(S.boss.rank==='J'&&S.boss.jackPlus2)dmg+=2; if(S.boss.rank==='X'&&S.boss.jokerTimes2)dmg*=2;
-  const tgtSel=$('bossTarget').value; const tgt=(tgtSel==='AUTO')?((S.A.hp<=S.B.hp)?'A':'B'):tgtSel;
-  const h=S[tgt]; const reduced=Math.max(0,dmg-h.shield); h.shield=0; h.hp=clamp(h.hp-reduced,0,h.maxHP);
-  $('abilityOut').textContent=`Boss dealt ${reduced} to ${tgt}`;
-  if(h.hp<=0 && !h.down){h.down=true;toast(`Hero ${tgt} defeated!`,'bad')}
+
+  const tgtSel=$('bossTarget').value;
+  let tgtKey = (tgtSel==='AUTO') ? getLowestAliveHeroKey() : tgtSel;
+  if(!tgtKey){ $('abilityOut').textContent=`Boss turn: no living targets`; S.boss.round+=1; ['A','B'].forEach(k=>{const hh=S[k];hh.plays=BASE_PLAYS;hh.playsMax=BASE_PLAYS;hh.diamond=0;drawUp(k)}); render(); return; }
+
+  const h=S[tgtKey];
+  const reduced=Math.max(0,dmg-h.shield); h.shield=0; h.hp=clamp(h.hp-reduced,0,h.maxHP);
+  $('abilityOut').textContent=`Boss dealt ${reduced} to ${tgtKey}`;
+  if(h.hp<=0 && !h.down){h.down=true;toast(`Hero ${tgtKey} defeated!`,'bad')}
+
   S.boss.round+=1; S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
   ['A','B'].forEach(k=>{const hh=S[k];hh.plays=BASE_PLAYS;hh.playsMax=BASE_PLAYS;hh.diamond=0;drawUp(k)}); render();
 }
@@ -300,7 +344,12 @@ function playSelected(w){
   }
 
   const r=d12(); outR.textContent=`d12: ${r}`;
-  if(r===12){h.plays-=1; const t=getLowestHero(); t.hp=clamp(t.hp-1,0,t.maxHP); if(t.hp<=0)t.down=true; outT.textContent='Fumble (lowest hero −1)'; render(); return;}
+  if(r===12){
+    h.plays-=1;
+    teamHurt(1); // damage lowest ALIVE hero; skip if both dead
+    outT.textContent='Fumble (lowest living hero −1)';
+    render(); return;
+  }
   if(r>card.v){h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); return;}
 
   h.plays-=1;
@@ -325,7 +374,7 @@ function forfeitAndRedraw(w){
 /* ==== Rewards ==== */
 const GENERICS=[
   {id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
-  {id:'sprint',  label:'Sprint · +2⚔, self-1',run:(h)=>{deal(2);const t=getLowestHero(); t.hp=clamp(t.hp-1,0,t.maxHP)}},
+  {id:'sprint',  label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},  /* now safe vs dead */
   {id:'parry',   label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
   {id:'tactics', label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
   {id:'rally',   label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
