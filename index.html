@@ -7,46 +7,64 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f1115">
 <style>
-  :root{--bg:#0f1115;--panel:#171a21;--ink:#e9eef6;--sub:#aab3c2;--line:#272c3b;--chip:#141a24;--chipline:#293143;--accent:#60a5fa;--good:#34d399;--warn:#f59e0b;--bad:#ef4444;--overlay:rgba(0,0,0,.55)}
+  :root{
+    --bg:#0f1115; --panel:#171a21; --ink:#e9eef6; --sub:#aab3c2;
+    --line:#272c3b; --chip:#141a24; --chipline:#293143;
+    --accent:#60a5fa; --good:#34d399; --warn:#f59e0b; --bad:#ef4444;
+    --overlay:rgba(0,0,0,.55)
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:#0f1115;color:#e9eef6;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
   .wrap{max-width:980px;margin:0 auto;padding:14px}
-  h1{margin:0 0 10px;font-size:20px}
-  .card{background:#171a21;border:1px solid var(--line);border-radius:14px;padding:14px}
+  h1{margin:0 0 12px;font-size:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{display:flex;justify-content:space-between;align-items:center}
-  .bar{height:12px;background:#0e1420;border:1px solid #283045;border-radius:999px;overflow:hidden}
-  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--good))}
-  .sub{color:var(--sub);font-size:12px}
-  .btn{padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:#151924;color:#e9eef6;cursor:pointer}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){ .grid2{grid-template-columns:1fr} }
+
+  /* Buttons (only where needed) */
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#151924;color:var(--ink);cursor:pointer}
   .btn:active{transform:translateY(1px)}
-  .btn.red{background:#2a1215;border-color:#3a1a1e}
-  .btn.green{background:#13301f;border-color:#1b3e29}
   .btn.gray{background:#141922;border-color:#252c3c}
+  .btn.green{background:#13301f;border-color:#1b3e29}
+  .btn.red{background:#2a1215;border-color:#3a1a1e}
   .mini{padding:2px 8px;font-size:11px}
-  input,select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:#0f131b;color:#e9eef6}
-  .chip{background:#141a24;border:1px solid #293143;border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
-  .chip.bad{border-color:#5a1d21;background:#2a1516;color:#ffd6d6}
-  .chip.good{border-color:#1f3e29;background:#132018;color:#d7ffe3}
-  .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
-  .step{margin-top:10px}
-  .step>h2{margin:0 0 8px;font-size:14px;color:#cfe3ff}
+
+  /* Chips & stats (non-button visuals) */
+  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
+  .sub{color:var(--sub);font-size:12px}
+  .statline{display:flex;gap:8px;flex-wrap:wrap;color:#cfe3ff;font-size:12px;opacity:.9}
+
+  /* Bars */
+  .bar{height:14px;background:#0e1420;border:1px solid #283045;border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--good));transition:width .18s ease}
+
+  /* Hand cards (look like cards, not buttons) */
   .hand{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-  .cardlet{min-width:40px;padding:8px;border-radius:8px;border:1px solid #2b3244;background:#121722;cursor:pointer}
-  .cardlet.sel{outline:2px solid #60a5fa;outline-offset:2px}
+  .cardlet{
+    min-width:42px;padding:8px;border-radius:8px;border:1px solid #2b3244;background:#121722;
+    cursor:pointer;text-align:center;font-weight:600
+  }
+  .cardlet.sel{outline:2px solid var(--accent); outline-offset:2px}
   .hide{display:none}
-  .toasts{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
-  .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+
+  /* Toasts */
+  .toasts{position:fixed; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:9999}
+  .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.bad{border-color:#5a1d21;background:#281215}
   .toast.good{border-color:#1f3e29;background:#132018}
-  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:9998}
+
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:var(--overlay); display:none; align-items:center; justify-content:center; z-index:9998}
   .overlay.show{display:flex}
-  .modal{width:min(920px,94vw);max-height:86vh;overflow:auto;background:#151922;border:1px solid #2a3040;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.5);padding:14px}
-  .modal h3{margin:0 0 8px;font-size:16px}
-  .grid{display:grid;gap:10px}
-  .g2{grid-template-columns:1fr 1fr}
-  .list{border:1px solid #2a3142;border-radius:10px;padding:10px}
-  .tag{display:inline-block;border:1px solid #2b3142;border-radius:6px;padding:3px 6px;margin:3px;font-size:12px;background:#121723}
+  .modal{width:min(920px,94vw); max-height:86vh; overflow:auto; background:#151922; border:1px solid #2a3040; border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.5); padding:14px}
+  .modal h3{margin:0 0 8px; font-size:16px}
+  .list{border:1px solid #2a3142; border-radius:10px; padding:10px}
+  .tag{display:inline-block; border:1px solid #2b3142; border-radius:6px; padding:3px 6px; margin:3px; font-size:12px; background:#121723}
+
+  /* Header layout */
+  .bossHead{display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center}
 </style>
 </head>
 <body>
@@ -54,115 +72,141 @@
   <h1>Royal Crush — Full Gauntlet</h1>
   <div class="toasts" id="toasts"></div>
 
-  <div class="card">
-    <div class="between">
+  <!-- BOSS PANEL -->
+  <div class="card" id="bossPanel">
+    <div class="bossHead">
       <div>
         <div class="sub">Royal</div>
         <div style="font-size:20px;font-weight:700" id="bossName">—</div>
         <div class="sub" id="bossStats">HP — • DMG —</div>
       </div>
       <div style="text-align:right">
-        <div class="sub">Boss HP</div>
-        <div class="row" style="justify-content:flex-end">
-          <div style="font-size:22px;font-weight:700"><span id="hpNow">0</span>/<span id="hpMax">0</span></div>
-          <div class="chip">POI: <span id="poiVal">0</span></div>
-          <button class="btn mini" id="poiPlus">+1</button>
-          <button class="btn mini" id="poiMinus">-1</button>
+        <div class="chip">Round <span id="roundOut">1</span></div>
+        <div class="chip">POI <span id="poiVal">0</span></div>
+      </div>
+    </div>
+
+    <div class="row" style="align-items:center; gap:12px; margin-top:8px">
+      <div style="flex:1">
+        <div class="bar"><span id="hpBar" style="width:0%"></span></div>
+        <div class="between" style="margin-top:6px">
+          <div style="font-size:18px;font-weight:700"><span id="hpNow">0</span>/<span id="hpMax">0</span></div>
+          <div class="sub" id="prog">Run: —</div>
         </div>
       </div>
-    </div>
-    <div class="bar" style="margin:8px 0 10px"><span id="hpBar" style="width:0%"></span></div>
-
-    <div class="sub" id="prog" style="margin:4px 0 10px;opacity:.86">Run: —</div>
-
-    <!-- Hero A -->
-    <div class="step">
-      <h2>Step 1 — Hero A acts</h2>
       <div class="row">
-        <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
-        <div class="chip">HP: <span id="hpA">35</span></div>
-        <button class="btn mini" id="hpAMinus">-1</button>
-        <button class="btn mini" id="hpAPlus">+1</button>
-        <button class="btn gray mini" id="forfeitA">Forfeit & Redraw</button>
-      </div>
-      <div class="row" style="margin-top:6px"><div class="sub">Hand (tap to select):</div><div id="handA" class="hand"></div></div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn" id="rollA">Play Selected & Roll d12</button>
-        <button class="btn gray mini" id="drawA">Draw Up</button>
-        <div class="chip mono" id="rollOutA">—</div>
-        <div class="chip mono" id="resultA">—</div>
-      </div>
-      <div class="row"><div class="chip">Deck <span id="deckCountA">0</span></div><div class="chip">Discard <span id="discCountA">0</span></div><div class="chip">Hand <span id="handCountA">0</span></div></div>
-    </div>
-
-    <!-- Hero B -->
-    <div class="step">
-      <h2>Step 2 — Hero B acts</h2>
-      <div class="row">
-        <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
-        <div class="chip">HP: <span id="hpB">30</span></div>
-        <button class="btn mini" id="hpBMinus">-1</button>
-        <button class="btn mini" id="hpBPlus">+1</button>
-        <button class="btn gray mini" id="forfeitB">Forfeit & Redraw</button>
-      </div>
-      <div class="row" style="margin-top:6px"><div class="sub">Hand (tap to select):</div><div id="handB" class="hand"></div></div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn" id="rollB">Play Selected & Roll d12</button>
-        <button class="btn gray mini" id="drawB">Draw Up</button>
-        <div class="chip mono" id="rollOutB">—</div>
-        <div class="chip mono" id="resultB">—</div>
-      </div>
-      <div class="row"><div class="chip">Deck <span id="deckCountB">0</span></div><div class="chip">Discard <span id="discCountB">0</span></div><div class="chip">Hand <span id="handCountB">0</span></div></div>
-    </div>
-
-    <!-- Boss ability & turn -->
-    <div class="step">
-      <h2>Step 3 — Boss ability (optional)</h2>
-      <div class="row"><button class="btn" id="abilityBtn">Roll Ability (d12)</button><div class="chip mono" id="abilityOut">—</div></div>
-    </div>
-    <div class="step">
-      <h2>Step 4 — Boss Turn → Next Round</h2>
-      <div class="row">
-        <select id="bossTarget">
-          <option value="AUTO" selected>Target: Auto (lowest HP)</option>
-          <option value="A">Target: Hero A</option>
-          <option value="B">Target: Hero B</option>
-        </select>
-        <button class="btn red" id="bossTurnBtn">Boss Turn → Next Round</button>
-        <div class="chip mono" id="roundOut">R1</div>
+        <button class="btn mini" id="poiPlus">+POI</button>
+        <button class="btn mini" id="poiMinus">−POI</button>
       </div>
     </div>
   </div>
 
-  <div class="row" style="margin-top:10px">
-    <button class="btn gray" id="newRunBtn">New Run</button>
+  <!-- HEROES -->
+  <div class="grid2" style="margin-top:12px">
+    <!-- HERO A -->
+    <div class="card">
+      <div class="row between">
+        <div class="row" style="gap:8px;align-items:center">
+          <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
+          <div class="chip">HP <span id="hpA">35</span></div>
+        </div>
+        <div class="row" style="gap:6px">
+          <button class="btn mini" id="forfeitA">Forfeit & Redraw</button>
+          <button class="btn mini gray" id="hpAMinus">−1</button>
+          <button class="btn mini gray" id="hpAPlus">+1</button>
+        </div>
+      </div>
+
+      <div class="statline" style="margin-top:6px">
+        <div>Plays: <span id="playsA">1</span></div>
+        <div>Deck: <span id="deckCountA">0</span></div>
+        <div>Discard: <span id="discCountA">0</span></div>
+        <div>Hand: <span id="handCountA">0</span></div>
+      </div>
+
+      <div class="hand" id="handA"></div>
+
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="rollA" style="flex:1">Play Selected & Roll d12</button>
+        <div class="chip" id="rollOutA">—</div>
+        <div class="chip" id="resultA">—</div>
+      </div>
+    </div>
+
+    <!-- HERO B -->
+    <div class="card">
+      <div class="row between">
+        <div class="row" style="gap:8px;align-items:center">
+          <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
+          <div class="chip">HP <span id="hpB">30</span></div>
+        </div>
+        <div class="row" style="gap:6px">
+          <button class="btn mini" id="forfeitB">Forfeit & Redraw</button>
+          <button class="btn mini gray" id="hpBMinus">−1</button>
+          <button class="btn mini gray" id="hpBPlus">+1</button>
+        </div>
+      </div>
+
+      <div class="statline" style="margin-top:6px">
+        <div>Plays: <span id="playsB">1</span></div>
+        <div>Deck: <span id="deckCountB">0</span></div>
+        <div>Discard: <span id="discCountB">0</span></div>
+        <div>Hand: <span id="handCountB">0</span></div>
+      </div>
+
+      <div class="hand" id="handB"></div>
+
+      <div class="row" style="margin-top:6px">
+        <button class="btn" id="rollB" style="flex:1">Play Selected & Roll d12</button>
+        <div class="chip" id="rollOutB">—</div>
+        <div class="chip" id="resultB">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="row" style="margin-top:12px">
+    <button class="btn gray" id="newRunBtn">New Run (gauntlet only)</button>
     <button class="btn gray" id="resetBoss">New Game</button>
-    <label class="row" style="gap:6px;margin-left:auto"><input type="checkbox" id="perfModeChk" /><span class="sub">Performance Mode</span></label>
+    <label class="row" style="gap:6px;margin-left:auto">
+      <input type="checkbox" id="perfModeChk" />
+      <span class="sub">Performance Mode</span>
+    </label>
   </div>
 </div>
 
 <!-- Rewards Modal -->
 <div class="overlay" id="rewardsOverlay" role="dialog" aria-modal="true" aria-labelledby="rewTitle">
   <div class="modal">
-    <div class="between" style="margin-bottom:8px">
+    <div class="row between" style="margin-bottom:8px">
       <h3 id="rewTitle">Royal Defeated — Rewards</h3>
       <button class="btn" id="closeRewards">Close</button>
     </div>
-    <div class="sub" id="rewContext">Match suit → add FACE card you beat to your deck; otherwise pick a Generic. Damage/poison carry to next Royal; heals/shields apply now.</div>
-    <div class="grid g2" style="margin-top:10px">
-      <div class="list"><div class="sub" style="margin-bottom:6px">Hero A</div><div id="choicesA"></div></div>
-      <div class="list"><div class="sub" style="margin-bottom:6px">Hero B</div><div id="choicesB"></div></div>
+    <div class="sub" id="rewContext">Match suit → add FACE card you beat to your deck; otherwise pick a Generic one-time. Damage/poison carry to next Royal; heals/shields apply now.</div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="list">
+        <div class="sub" style="margin-bottom:6px">Hero A</div>
+        <div id="choicesA"></div>
+      </div>
+      <div class="list">
+        <div class="sub" style="margin-bottom:6px">Hero B</div>
+        <div id="choicesB"></div>
+      </div>
     </div>
-    <div class="row" style="margin-top:10px"><button class="btn green" id="ackRewards">Next Royal</button><div class="sub">Face cards are added to discard; they appear after reshuffle.</div></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn green" id="ackRewards">Next Royal</button>
+      <div class="sub">Face cards are added to discard; they appear after reshuffle.</div>
+    </div>
   </div>
 </div>
 
 <script>
-/* ==== Boss defs & Gauntlet ==== */
+/* =================== Core Data =================== */
 const bossDefs={J:{name:'Jacks',maxHP:8,atk:2},Q:{name:'Queens',maxHP:14,atk:4},K:{name:'Kings',maxHP:18,atk:5},X:{name:'Jokers',maxHP:26,atk:6}};
 const DMG_PER_HIT=5, BASE_PLAYS=1, BASE_DIAMOND_CAP=2, BASE_SHIELD=3, BASE_HEAL=3, BASE_POI=1;
 const SUITS=['♣','♠','♥','♦'], VALUES=[2,3,4,5,6,7,8,9];
 
+/* Classes */
 const classMods={
   Knight:{maxHP:35,diamondCap:0,lucky:0,shield:1,heal:0,poi:0,suits:['♣','♥']},
   Mage:{  maxHP:30,diamondCap:1,lucky:1,shield:0,heal:0,poi:0,suits:['♦','♠']},
@@ -170,7 +214,7 @@ const classMods={
   Priest:{maxHP:35,diamondCap:0,lucky:0,shield:0,heal:1,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects (use teamHeal for all heals) */
+/* Legendary effects (heals route to lowest hero) */
 const legendaryEffects={
   Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
   Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
@@ -178,16 +222,28 @@ const legendaryEffects={
   Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
 };
 
-/* Gauntlet */
+/* =================== Gauntlet =================== */
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function buildGauntlet(){const j=shuffle([...SUITS]).map(s=>({rank:'J',suit:s}));const q=shuffle([...SUITS]).map(s=>({rank:'Q',suit:s}));const k=shuffle([...SUITS]).map(s=>({rank:'K',suit:s}));return[...j,...q,...k,{rank:'X',suit:'X'},{rank:'X',suit:'X'}]}
+function buildGauntlet(){
+  const j=shuffle([...SUITS]).map(s=>({rank:'J',suit:s}));
+  const q=shuffle([...SUITS]).map(s=>({rank:'Q',suit:s}));
+  const k=shuffle([...SUITS]).map(s=>({rank:'K',suit:s}));
+  return[...j,...q,...k,{rank:'X',suit:'X'},{rank:'X',suit:'X'}];
+}
 function labelCard(c){return c.rank==='X'?'Joker':`${c.rank}${c.suit}`}
 
-/* ==== State ==== */
-let S={gauntlet:buildGauntlet(),gauntletIndex:0,boss:{rank:'J',suit:'♦',name:'Jacks',hp:8,maxHP:8,atk:2,round:1,poison:0,jackPlus2:false,jokerTimes2:false},A:makeHero('Knight'),B:makeHero('Mage'),selA:null,selB:null};
+/* =================== State =================== */
+let S={
+  gauntlet:buildGauntlet(),
+  gauntletIndex:0,
+  boss:{rank:'J',suit:'♦',name:'Jacks',hp:8,maxHP:8,atk:2,round:1,poison:0,jackPlus2:false,jokerTimes2:false},
+  A:makeHero('Knight'),
+  B:makeHero('Mage'),
+  selA:null, selB:null
+};
 let carry={damage:0,poison:0};
 
-/* ==== Helpers ==== */
+/* =================== Helpers =================== */
 const $=id=>document.getElementById(id);
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const d12=()=>Math.floor(Math.random()*12)+1;
@@ -197,19 +253,44 @@ const capPlays=h=>BASE_DIAMOND_CAP+(classMods[h.cls].diamondCap||0);
 const shieldVal=h=>BASE_SHIELD+(classMods[h.cls].shield||0);
 const healVal=h=>BASE_HEAL+(classMods[h.cls].heal||0);
 const poiVal=h=>BASE_POI+(classMods[h.cls].poi||0);
-function toast(msg,kind='info'){const d=document.createElement('div');d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':'');d.textContent=msg;$('toasts').appendChild(d);setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600);setTimeout(()=>d.remove(),3000)}
+
+function toast(msg,kind='info'){
+  const d=document.createElement('div'); d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':'');
+  d.textContent=msg; $('toasts').appendChild(d);
+  setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600);
+  setTimeout(()=>d.remove(),3000);
+}
 function save(){try{localStorage.setItem('rc.fullgauntlet',JSON.stringify(S))}catch{}}
-function load(){const raw=localStorage.getItem('rc.fullgauntlet');if(!raw)return;try{const o=JSON.parse(raw);S={...S,...o};['A','B'].forEach(k=>{const h=S[k];if(!Array.isArray(h.deck))h.deck=startDeck();if(!Array.isArray(h.discard))h.discard=[];if(!Array.isArray(h.hand))h.hand=[];h.plays=BASE_PLAYS;h.playsMax=BASE_PLAYS;h.diamond=0})}catch{}}
+function load(){
+  const raw=localStorage.getItem('rc.fullgauntlet'); if(!raw) return;
+  try{
+    const o=JSON.parse(raw); S={...S,...o};
+    ['A','B'].forEach(k=>{
+      const h=S[k];
+      if(!Array.isArray(h.deck)) h.deck=startDeck();
+      if(!Array.isArray(h.discard)) h.discard=[];
+      if(!Array.isArray(h.hand)) h.hand=[];
+      h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0;
+    });
+  }catch{}
+}
 
-/* ==== Heroes & Decks ==== */
-function makeHero(cls){const m=classMods[cls];return{cls,hp:m.maxHP,maxHP:m.maxHP,plays:BASE_PLAYS,playsMax:BASE_PLAYS,diamond:0,shield:0,down:false,deck:startDeck(),discard:[],hand:[]}}
-function startDeck(){const d=[];[2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s})));return shuffle(d)}
-function drawOne(w){const h=S[w];if(h.deck.length===0){if(h.discard.length===0)return false;h.deck=shuffle(h.discard.splice(0))}h.hand.push(h.deck.pop());return true}
-function drawUp(w,size=4){const h=S[w];while(h.hand.length<size&&(h.deck.length>0||h.discard.length>0))drawOne(w)}
-function discardHand(w){const h=S[w]; while(h.hand.length){h.discard.push(h.hand.pop())}}
+/* =================== Heroes & Decks =================== */
+function makeHero(cls){
+  const m=classMods[cls];
+  return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:BASE_PLAYS,playsMax:BASE_PLAYS,diamond:0,shield:0,down:false,deck:startDeck(),discard:[],hand:[]};
+}
+function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s}))); return shuffle(d); }
+function drawOne(w){
+  const h=S[w];
+  if(h.deck.length===0){ if(h.discard.length===0) return false; h.deck=shuffle(h.discard.splice(0)); }
+  h.hand.push(h.deck.pop()); return true;
+}
+function drawUp(w,size=4){ const h=S[w]; while(h.hand.length<size && (h.deck.length>0||h.discard.length>0)) drawOne(w); }
+function discardHand(w){ const h=S[w]; while(h.hand.length){h.discard.push(h.hand.pop())} }
 
-/* ==== Lowest-HP helpers (alive-aware) ==== */
-function getLowestHero(){ // legacy (can return dead)
+/* ============ Lowest-HP helpers (alive-aware) ============ */
+function getLowestHero(){ // may return downed hero (for heals)
   const a=S.A,b=S.B;
   if(a.hp<=0 && b.hp>0) return a;
   if(b.hp<=0 && a.hp>0) return b;
@@ -221,160 +302,217 @@ function getLowestAliveHero(){
   if(a && b) return (a.hp<=b.hp)?a:b;
   if(a) return a;
   if(b) return b;
-  return null; // both dead
-}
-function getLowestAliveHeroKey(){
-  const a=S.A.hp>0 ? {h:S.A,k:'A'} : null;
-  const b=S.B.hp>0 ? {h:S.B,k:'B'} : null;
-  if(a && b) return (a.h.hp<=b.h.hp)?'A':'B';
-  if(a) return 'A';
-  if(b) return 'B';
   return null;
 }
-/* Damage the lowest ALIVE hero; skip if none alive */
-function teamHurt(n){
-  const t=getLowestAliveHero();
-  if(!t) return; // both down: skip
-  t.hp = clamp(t.hp - n, 0, t.maxHP);
-  if(t.hp<=0) t.down = true;
+function getLowestAliveHeroKey(){
+  const a=S.A.hp>0 ? 'A' : null;
+  const b=S.B.hp>0 ? 'B' : null;
+  if(a && b) return (S.A.hp<=S.B.hp)?'A':'B';
+  return a||b; // may be null if both dead
 }
-/* Team heal still targets lowest HP (can revive) */
+function teamHurt(n){
+  const t=getLowestAliveHero(); if(!t) return; // both down → skip
+  t.hp = clamp(t.hp - n, 0, t.maxHP);
+  if(t.hp<=0) t.down=true;
+}
 function teamHeal(n){
-  const a=S.A,b=S.B;
-  // prefer reviving a downed hero if tie at 0
-  const target = (a.hp<=0 && b.hp>0) ? a :
-                 (b.hp<=0 && a.hp>0) ? b :
-                 (a.hp<=b.hp ? a : b);
-  const wasDown = target.down || target.hp<=0;
-  target.hp = clamp(target.hp + n, 0, target.maxHP);
-  if(wasDown && target.hp>0){ target.down=false; toast('Revived the lowest-HP hero','good'); }
+  const t=getLowestHero(); // allow revives
+  const wasDown = t.down || t.hp<=0;
+  t.hp = clamp(t.hp + n, 0, t.maxHP);
+  if(wasDown && t.hp>0){ t.down=false; toast('Revived the lowest-HP hero','good'); }
 }
 
-/* ==== Rendering ==== */
+/* =================== Rendering =================== */
+function renderBossBar(){
+  const pct = S.boss.maxHP>0 ? (S.boss.hp/S.boss.maxHP)*100 : 0;
+  $('hpBar').style.width = Math.max(0,Math.min(100,pct))+'%';
+  $('hpNow').textContent = S.boss.hp;
+  $('hpMax').textContent = S.boss.maxHP;
+}
 function render(){
-  $('bossName').textContent=`${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
-  $('bossStats').textContent=`HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
-  $('hpNow').textContent=S.boss.hp; $('hpMax').textContent=S.boss.maxHP;
-  $('hpBar').style.width=Math.max(0,Math.min(100),(S.boss.hp/S.boss.maxHP)*100)+'%';
-  $('poiVal').textContent=S.boss.poison;
-  $('roundOut').textContent='R'+S.boss.round;
-  const parts=S.gauntlet.map((c,i)=>i===S.gauntletIndex?`[${labelCard(c)}]`:labelCard(c));
-  $('prog').textContent='Run: '+parts.join(' → ');
-  renderHero('A');renderHero('B'); save();
+  $('bossName').textContent = `${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
+  $('bossStats').textContent = `HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
+  $('poiVal').textContent = S.boss.poison;
+  $('roundOut').textContent = S.boss.round;
+  const parts=S.gauntlet.map((c,i)=> i===S.gauntletIndex ? `[${labelCard(c)}]` : labelCard(c));
+  $('prog').textContent = 'Run: ' + parts.join(' → ');
+  renderBossBar();
+
+  renderHero('A'); renderHero('B');
+  $('playsA').textContent = S.A.plays; $('playsB').textContent = S.B.plays;
+  save();
 }
 function renderHero(w){
   const h=S[w];
   $('hp'+w).textContent=h.hp;
-  $('deckCount'+w).textContent=h.deck.length; $('discCount'+w).textContent=h.discard.length; $('handCount'+w).textContent=h.hand.length;
+  $('deckCount'+w).textContent=h.deck.length;
+  $('discCount'+w).textContent=h.discard.length;
+  $('handCount'+w).textContent=h.hand.length;
+
   const zone=$('hand'+w); zone.innerHTML='';
-  h.hand.forEach((c,i)=>{const el=document.createElement('button');el.className='cardlet btn';if((w==='A'?S.selA:S.selB)===i)el.classList.add('sel');el.textContent=(c.type==='num')?`${c.v}${c.s}`:`${c.rank}${c.s}`;el.onclick=()=>{if(w==='A')S.selA=(S.selA===i?null:i);else S.selB=(S.selB===i?null:i);render()};zone.appendChild(el)})
+  h.hand.forEach((c,i)=>{
+    const el=document.createElement('div');
+    el.className='cardlet'+(((w==='A'?S.selA:S.selB)===i)?' sel':'');
+    el.textContent = c.type==='num' ? `${c.v}${c.s}` : `${c.rank}${c.s}`;
+    el.onclick=()=>{ if(w==='A') S.selA=(S.selA===i?null:i); else S.selB=(S.selB===i?null:i); render(); };
+    zone.appendChild(el);
+  });
 }
 
-/* ==== Boss lifecycle ==== */
+/* =================== Boss lifecycle =================== */
 function setBossByIndex(i){
-  S.gauntletIndex=i; const card=S.gauntlet[i]; const def=bossDefs[card.rank];
+  S.gauntletIndex = i;
+  const card = S.gauntlet[i], def=bossDefs[card.rank];
   S.boss={rank:card.rank,suit:card.suit,name:def.name,hp:def.maxHP,maxHP:def.maxHP,atk:def.atk,round:1,poison:0,jackPlus2:false,jokerTimes2:false};
-  if(carry.damage>0){S.boss.hp=Math.max(0,S.boss.hp-carry.damage)} if(carry.poison>0){S.boss.poison+=carry.poison}
-  if(carry.damage>0||carry.poison>0){toast(`Carry-over → −${carry.damage||0} DMG, +${carry.poison||0} POI`,'good')}
-  carry.damage=0;carry.poison=0;
-  ['A','B'].forEach(k=>{const h=S[k];h.plays=BASE_PLAYS;h.playsMax=BASE_PLAYS;h.diamond=0;h.shield=0});
-  drawUp('A');drawUp('B'); render();
-}
-function nextBoss(){ if(S.gauntletIndex<S.gauntlet.length-1){setBossByIndex(S.gauntletIndex+1)}else{toast('Gauntlet complete! New run generated.','good');S.gauntlet=buildGauntlet();setBossByIndex(0)}}
 
-/* New Game = fresh gauntlet & fresh heroes/decks/hands/HP */
+  // carry-over
+  if(carry.damage>0){ S.boss.hp = Math.max(0,S.boss.hp - carry.damage); }
+  if(carry.poison>0){ S.boss.poison += carry.poison; }
+  if(carry.damage>0||carry.poison>0){ toast(`Carry-over → −${carry.damage||0} DMG, +${carry.poison||0} POI`,'good'); }
+  carry.damage=0; carry.poison=0;
+
+  // reset heroes for new fight
+  ['A','B'].forEach(k=>{ const h=S[k]; h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0; h.shield=0; drawUp(k); });
+  render();
+}
+function nextBoss(){
+  if(S.gauntletIndex<S.gauntlet.length-1){ setBossByIndex(S.gauntletIndex+1); }
+  else{ toast('Gauntlet complete! New run generated.','good'); S.gauntlet=buildGauntlet(); setBossByIndex(0); }
+}
+
+/* New Game (full reset) */
 function resetGame(){
   const clsA=S?.A?.cls||'Knight', clsB=S?.B?.cls||'Mage';
   S.gauntlet = buildGauntlet();
   S.gauntletIndex = 0;
   S.A = makeHero(clsA);
   S.B = makeHero(clsB);
-  carry.damage = 0; carry.poison = 0;
+  carry.damage=0; carry.poison=0;
   setBossByIndex(0);
   toast('New game started: fresh gauntlet & decks.','good');
 }
 
-/* ==== Boss mechanics ==== */
-function bossAbility(){
-  const b=S.boss; const r=d12(); let msg=`d12: ${r} • DMG ${b.atk}`;
-  if(b.rank==='J'){b.jackPlus2=(r<=3); if(b.jackPlus2) msg=`d12: ${r} • DMG ${b.atk+2} (base ${b.atk}+2)`;}
-  else if(b.rank==='Q'){if(r<=3){b.hp=clamp(b.hp+3,0,b.maxHP); msg=`d12: ${r} • Heal +3 • DMG ${b.atk}`;}}
-  else if(b.rank==='K'){if(r<=2){b.poison=0; msg=`d12: ${r} • Purge POI • DMG ${b.atk}`;}}
-  else if(b.rank==='X'){b.jokerTimes2=(r>=8&&r<=10); if(b.jokerTimes2) msg=`d12: ${r} • DMG ${b.atk*2} (×2)`;}
-  $('abilityOut').textContent=msg; render();
+/* =================== Boss mechanics (auto phase) =================== */
+function bossAbilityResolve(){
+  const b=S.boss; const r=d12();
+  if(b.rank==='J'){ b.jackPlus2=(r<=3); return `J roll ${r}: ${b.jackPlus2?'+2 DMG next attack':'no boost'}`; }
+  if(b.rank==='Q'){ if(r<=3){ const heal=Math.min(3,b.maxHP-b.hp); b.hp += heal; renderBossBar(); return `Q roll ${r}: healed +${heal}`; } return `Q roll ${r}: no heal`; }
+  if(b.rank==='K'){ if(r<=2){ const purged=b.poison; b.poison=0; return `K roll ${r}: purged ${purged} poison`; } return `K roll ${r}: no purge`; }
+  if(b.rank==='X'){ b.jokerTimes2=(r>=8&&r<=10); return `Joker roll ${r}: ${b.jokerTimes2?'x2 damage':''}${!b.jokerTimes2?'no double':''}`; }
+  return `roll ${r}`;
 }
-function bossTurn(){
-  if(S.boss.poison>0){S.boss.hp=clamp(S.boss.hp-S.boss.poison,0,S.boss.maxHP)}
-  if(S.boss.hp<=0){onBossDefeated('by Poison');return}
-  let dmg=S.boss.atk; if(S.boss.rank==='J'&&S.boss.jackPlus2)dmg+=2; if(S.boss.rank==='X'&&S.boss.jokerTimes2)dmg*=2;
+function bossAttackResolve(){
+  if(S.boss.hp<=0) return 'Boss is down';
+  let dmg=S.boss.atk;
+  if(S.boss.rank==='J'&&S.boss.jackPlus2) dmg+=2;
+  if(S.boss.rank==='X'&&S.boss.jokerTimes2) dmg*=2;
 
-  const tgtSel=$('bossTarget').value;
-  let tgtKey = (tgtSel==='AUTO') ? getLowestAliveHeroKey() : tgtSel;
-  if(!tgtKey){ $('abilityOut').textContent=`Boss turn: no living targets`; S.boss.round+=1; ['A','B'].forEach(k=>{const hh=S[k];hh.plays=BASE_PLAYS;hh.playsMax=BASE_PLAYS;hh.diamond=0;drawUp(k)}); render(); return; }
-
+  const tgtKey = getLowestAliveHeroKey();
+  if(!tgtKey) return 'No living targets';
   const h=S[tgtKey];
-  const reduced=Math.max(0,dmg-h.shield); h.shield=0; h.hp=clamp(h.hp-reduced,0,h.maxHP);
-  $('abilityOut').textContent=`Boss dealt ${reduced} to ${tgtKey}`;
-  if(h.hp<=0 && !h.down){h.down=true;toast(`Hero ${tgtKey} defeated!`,'bad')}
-
-  S.boss.round+=1; S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
-  ['A','B'].forEach(k=>{const hh=S[k];hh.plays=BASE_PLAYS;hh.playsMax=BASE_PLAYS;hh.diamond=0;drawUp(k)}); render();
+  const reduced=Math.max(0,dmg-h.shield); h.shield=0;
+  h.hp=clamp(h.hp-reduced,0,h.maxHP);
+  if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${tgtKey} defeated!`,'bad'); }
+  return `Boss dealt ${reduced} to ${tgtKey}`;
+}
+function startNextRound(){
+  S.boss.round += 1;
+  S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
+  ['A','B'].forEach(k=>{ const h=S[k]; h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0; drawUp(k); });
+  render();
 }
 
-/* ==== Effects / carry-over ==== */
-function deal(n){ if(S.boss.hp>0){S.boss.hp=Math.max(0,S.boss.hp-n)} else {carry.damage+=n} }
+/* Auto-phase driver: called when BOTH heroes have no plays */
+function doBossPhase(){
+  // Ongoing poison
+  if(S.boss.poison>0){
+    const before=S.boss.hp;
+    S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP);
+    renderBossBar();
+    if(before!==S.boss.hp) toast(`Poison ticks for ${before-S.boss.hp}`,'good');
+    if(S.boss.hp<=0){ onBossDefeated('by Poison'); return; }
+  }
+
+  // Ability + Attack
+  const abilityMsg=bossAbilityResolve(); render();
+  const attackMsg=bossAttackResolve(); render();
+
+  toast(`Royal ability: ${abilityMsg}`);
+  toast(`Royal attack: ${attackMsg}`);
+
+  // If boss died from carry-over or other effects during attack, handle defeat
+  if(S.boss.hp<=0){ onBossDefeated('defeated'); return; }
+
+  startNextRound();
+}
+
+/* =================== Effects & Rewards =================== */
+function deal(n){ if(S.boss.hp>0){ S.boss.hp=Math.max(0,S.boss.hp-n); renderBossBar(); } else { carry.damage+=n; } }
 function shield(n,h){ h.shield=(h.shield||0)+n }
 function addPlay(h){ const cap=capPlays(h); if(h.playsMax<BASE_PLAYS+cap){h.plays+=1;h.playsMax+=1} }
-function addPoison(n){ if(S.boss.hp>0){S.boss.poison+=n}else{carry.poison+=n} }
+function addPoison(n){ if(S.boss.hp>0){ S.boss.poison+=n; } else { carry.poison+=n; } }
 
-/* ==== Play/Forfeit ==== */
+/* Play card or forfeit */
 function playSelected(w){
   const h=S[w]; if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
   if(h.plays<=0){toast(`Hero ${w} has no plays.`,'bad');return}
   const idx=(w==='A'?S.selA:S.selB); if(idx==null){toast(`Select a card in ${w}'s hand first.`,'bad');return}
-  const [card]=h.hand.splice(idx,1); h.discard.push(card); if(w==='A')S.selA=null; else S.selB=null;
+
+  const [card]=h.hand.splice(idx,1); h.discard.push(card);
+  if(w==='A') S.selA=null; else S.selB=null;
+
   const outR=$('rollOut'+w), outT=$('result'+w);
 
+  // Legendary
   if(card.type==='face'){
     const key=`${card.rank}${card.s}`; const eff=(legendaryEffects[h.cls]||{})[key];
     outR.textContent=`FACE ${key}`;
     if(typeof eff==='function'){ eff(h); outT.textContent='Legendary played'; }
     else { outT.textContent='Legendary (no effect configured)'; }
-    h.plays-=1; if(S.boss.hp<=0){onBossDefeated('by damage')} render(); return;
+    h.plays-=1; if(S.boss.hp<=0){ onBossDefeated('by damage'); return; }
+    render();
+    maybeDoBossPhase();
+    return;
   }
 
+  // Number card: roll to hit
   const r=d12(); outR.textContent=`d12: ${r}`;
   if(r===12){
-    h.plays-=1;
-    teamHurt(1); // damage lowest ALIVE hero; skip if both dead
-    outT.textContent='Fumble (lowest living hero −1)';
-    render(); return;
+    h.plays-=1; teamHurt(1); outT.textContent='Fumble (lowest living hero −1)'; render(); maybeDoBossPhase(); return;
   }
-  if(r>card.v){h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); return;}
+  if(r>card.v){ h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); maybeDoBossPhase(); return; }
 
   h.plays-=1;
   let dmg=DMG_PER_HIT; if(r===1)dmg+=lucky(h); deal(dmg);
   let tag=`Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){ shield(shieldVal(h),h); tag+=` • ♣ Shield +${shieldVal(h)}`; }
-  else if(card.s==='♥'){ teamHeal(healVal(h)); tag+=` • ♥ Heal to lowest +${healVal(h)}`; }
+  else if(card.s==='♥'){ teamHeal(healVal(h)); tag+=` • ♥ Heal lowest +${healVal(h)}`; }
   else if(card.s==='♠'){ addPoison(poiVal(h)); tag+=` • ♠ POI +${poiVal(h)}`; }
   else if(card.s==='♦'){ addPlay(h); tag+=' • ♦ +1 play'; }
   outT.textContent=tag;
-  if(S.boss.hp<=0){ onBossDefeated('by damage') }
-  render();
+
+  if(S.boss.hp<=0){ onBossDefeated('by damage'); return; }
+  render(); maybeDoBossPhase();
 }
 function forfeitAndRedraw(w){
   const h=S[w];
   if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
   if(h.plays<=0){toast(`Hero ${w} already spent plays.`,'bad');return}
   discardHand(w); drawUp(w); h.plays=0; h.playsMax=Math.max(h.playsMax,BASE_PLAYS);
-  toast(`Hero ${w} forfeits and redraws.`,'good'); render();
+  toast(`Hero ${w} forfeits and redraws.`,'good'); render(); maybeDoBossPhase();
 }
 
-/* ==== Rewards ==== */
+/* After every hero action, check if boss should act */
+function maybeDoBossPhase(){
+  const aDone = S.A.plays<=0 || S.A.down;
+  const bDone = S.B.plays<=0 || S.B.down;
+  if(aDone && bDone){ doBossPhase(); }
+}
+
+/* Rewards */
 const GENERICS=[
   {id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
-  {id:'sprint',  label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},  /* now safe vs dead */
+  {id:'sprint',  label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
   {id:'parry',   label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
   {id:'tactics', label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
   {id:'rally',   label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
@@ -386,46 +524,68 @@ const GENERICS=[
   {id:'trick',   label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
   {id:'ward',    label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
 ];
-function autoTrashLowest(h,n=1){const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i}});if(best>=0){arr.splice(best,1);return true}return false};for(let i=0;i<n;i++){if(take(h.hand))continue;if(take(h.discard))continue;if(take(h.deck))continue}}
-function onBossDefeated(reason='defeated'){$('abilityOut').textContent=`Royal ${reason}`;toast(`Royal defeated — rewards ready.`,'good');openRewards()}
-function openRewards(){buildChoices('A');buildChoices('B');$('rewardsOverlay').classList.add('show')}
-function closeRewards(){$('rewardsOverlay').classList.remove('show')}
+function autoTrashLowest(h,n=1){
+  const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i}}); if(best>=0){arr.splice(best,1);return true} return false};
+  for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
+}
+function onBossDefeated(reason='defeated'){ toast(`Royal ${reason} — rewards ready.`,'good'); openRewards(); }
+function openRewards(){ buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
+function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
 function buildChoices(w){
-  const holder=$('choices'+w);holder.innerHTML='';const h=S[w];const b=S.boss;const suitOK=b.rank!=='X'&&classMods[h.cls].suits.includes(b.suit);
+  const holder=$('choices'+w); holder.innerHTML='';
+  const h=S[w], b=S.boss;
+  const suitOK = b.rank!=='X' && classMods[h.cls].suits.includes(b.suit);
   if(suitOK){
-    const key=`${b.rank}${b.suit}`;const btn=document.createElement('button');btn.className='btn green';btn.textContent=`Add ${key} to deck (Legendary)`;btn.onclick=()=>{h.discard.push({type:'face',rank:b.rank,s:b.suit});btn.disabled=true;btn.textContent='Added';toast(`Hero ${w}: +${key}`,'good')};holder.appendChild(btn);
-    const info=document.createElement('div');info.className='sub';info.style.marginTop='6px';info.textContent='Legendary plays automatically (no roll) when drawn.';holder.appendChild(info);
+    const key=`${b.rank}${b.suit}`;
+    const btn=document.createElement('button');
+    btn.className='btn green'; btn.textContent=`Add ${key} to deck (Legendary)`;
+    btn.onclick=()=>{ h.discard.push({type:'face',rank:b.rank,s:b.suit}); btn.disabled=true; btn.textContent='Added'; toast(`Hero ${w}: +${key}`,'good'); };
+    holder.appendChild(btn);
+    const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
+    info.textContent='Legendary plays automatically (no roll) when drawn.'; holder.appendChild(info);
   }else{
-    GENERICS.forEach(g=>{const tag=document.createElement('button');tag.className='tag';tag.textContent=g.label;tag.onclick=()=>{g.run(h);tag.classList.add('hide');render()};holder.appendChild(tag)})
+    GENERICS.forEach(g=>{ const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label;
+      tag.onclick=()=>{ g.run(h); tag.classList.add('hide'); render(); }; holder.appendChild(tag); });
   }
 }
-$('ackRewards').addEventListener('click',()=>{closeRewards();nextBoss()}); $('closeRewards').addEventListener('click',closeRewards);
+$('ackRewards').addEventListener('click',()=>{ closeRewards(); nextBoss(); });
+$('closeRewards').addEventListener('click', closeRewards);
 
-/* ==== Wire-up ==== */
+/* =================== Init & Wire =================== */
 function init(){
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
   document.addEventListener('touchstart',()=>{}, {passive:true});
   load();
 
-  $('abilityBtn').onclick=bossAbility; $('bossTurnBtn').onclick=bossTurn;
-  $('poiPlus').onclick=()=>{S.boss.poison+=1;render()}; $('poiMinus').onclick=()=>{S.boss.poison=Math.max(0,S.boss.poison-1);render()};
-  $('resetBoss').onclick=resetGame;  // NEW GAME
+  $('poiPlus').onclick=()=>{ S.boss.poison+=1; render(); };
+  $('poiMinus').onclick=()=>{ S.boss.poison=Math.max(0,S.boss.poison-1); render(); };
+
+  $('resetBoss').onclick=resetGame;
   $('newRunBtn').onclick = ()=>{ S.gauntlet=buildGauntlet(); setBossByIndex(0); toast('New run: fresh gauntlet order.','good'); };
 
-  $('classA').onchange=e=>setClass('A',e.target.value); $('classB').onchange=e=>setClass('B',e.target.value);
-  $('hpAMinus').onclick=()=>{S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); if(S.A.hp<=0&&!S.A.down){S.A.down=true;toast('Hero A defeated!','bad')} render()};
-  $('hpAPlus').onclick =()=>{const was=S.A.down; S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); if(was&&S.A.hp>0){S.A.down=false;toast('Hero A revived','good')} render()};
-  $('hpBMinus').onclick=()=>{S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); if(S.B.hp<=0&&!S.B.down){S.B.down=true;toast('Hero B defeated!','bad')} render()};
-  $('hpBPlus').onclick =()=>{const was=S.B.down; S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); if(was&&S.B.hp>0){S.B.down=false;toast('Hero B revived','good')} render()};
+  $('classA').onchange=e=>setClass('A',e.target.value);
+  $('classB').onchange=e=>setClass('B',e.target.value);
 
-  $('drawA').onclick=()=>{drawUp('A');render()}; $('drawB').onclick=()=>{drawUp('B');render()};
-  $('rollA').onclick=()=>playSelected('A'); $('rollB').onclick=()=>playSelected('B');
-  $('forfeitA').onclick=()=>forfeitAndRedraw('A'); $('forfeitB').onclick=()=>forfeitAndRedraw('B');
+  $('hpAMinus').onclick=()=>{ S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); if(S.A.hp<=0&&!S.A.down){S.A.down=true;toast('Hero A defeated!','bad')} render(); };
+  $('hpAPlus').onclick =()=>{ const was=S.A.down; S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); if(was&&S.A.hp>0){ S.A.down=false; toast('Hero A revived','good'); } render(); };
+  $('hpBMinus').onclick=()=>{ S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); if(S.B.hp<=0&&!S.B.down){S.B.down=true;toast('Hero B defeated!','bad')} render(); };
+  $('hpBPlus').onclick =()=>{ const was=S.B.down; S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); if(was&&S.B.hp>0){ S.B.down=false; toast('Hero B revived','good'); } render(); };
 
-  if(S.A.hand.length===0)drawUp('A'); if(S.B.hand.length===0)drawUp('B');
-  setBossByIndex(S.gauntletIndex||0); render();
+  $('rollA').onclick=()=>playSelected('A');
+  $('rollB').onclick=()=>playSelected('B');
+  $('forfeitA').onclick=()=>forfeitAndRedraw('A');
+  $('forfeitB').onclick=()=>forfeitAndRedraw('B');
+
+  if(S.A.hand.length===0) drawUp('A');
+  if(S.B.hand.length===0) drawUp('B');
+  setBossByIndex(S.gauntletIndex||0);
+  render();
 }
-function setClass(w,cls){const h=S[w];const r=h.hp/h.maxHP||1;h.cls=cls;h.maxHP=classMods[cls].maxHP;h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);render()}
+function setClass(w,cls){
+  const h=S[w]; const r=h.hp/h.maxHP||1;
+  h.cls=cls; h.maxHP=classMods[cls].maxHP; h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);
+  render();
+}
 init();
 </script>
 </body>
