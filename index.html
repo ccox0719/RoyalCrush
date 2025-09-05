@@ -23,7 +23,6 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media (max-width:720px){ .grid2{grid-template-columns:1fr} }
 
-  /* Buttons (only where needed) */
   .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#151924;color:var(--ink);cursor:pointer}
   .btn:active{transform:translateY(1px)}
   .btn.gray{background:#141922;border-color:#252c3c}
@@ -31,40 +30,40 @@
   .btn.red{background:#2a1215;border-color:#3a1a1e}
   .mini{padding:2px 8px;font-size:11px}
 
-  /* Chips & stats (non-button visuals) */
-  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
+  .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#e8f1ff}
   .sub{color:var(--sub);font-size:12px}
   .statline{display:flex;gap:8px;flex-wrap:wrap;color:#cfe3ff;font-size:12px;opacity:.9}
 
-  /* Bars */
   .bar{height:14px;background:#0e1420;border:1px solid #283045;border-radius:999px;overflow:hidden}
   .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--good));transition:width .18s ease}
 
-  /* Hand cards (look like cards, not buttons) */
   .hand{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
   .cardlet{
     min-width:42px;padding:8px;border-radius:8px;border:1px solid #2b3244;background:#121722;
-    cursor:pointer;text-align:center;font-weight:600
+    cursor:pointer;text-align:center;font-weight:700
   }
   .cardlet.sel{outline:2px solid var(--accent); outline-offset:2px}
   .hide{display:none}
 
-  /* Toasts */
   .toasts{position:fixed; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:9999}
   .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.bad{border-color:#5a1d21;background:#281215}
   .toast.good{border-color:#1f3e29;background:#132018}
 
-  /* Modal */
   .overlay{position:fixed; inset:0; background:var(--overlay); display:none; align-items:center; justify-content:center; z-index:9998}
   .overlay.show{display:flex}
   .modal{width:min(920px,94vw); max-height:86vh; overflow:auto; background:#151922; border:1px solid #2a3040; border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.5); padding:14px}
   .modal h3{margin:0 0 8px; font-size:16px}
   .list{border:1px solid #2a3142; border-radius:10px; padding:10px}
-  .tag{display:inline-block; border:1px solid #2b3142; border-radius:6px; padding:3px 6px; margin:3px; font-size:12px; background:#121723}
-
-  /* Header layout */
+  /* Higher-contrast generic tags */
+  .tag{
+    display:inline-block; border:1px solid #3a69c9; border-radius:8px;
+    padding:6px 8px; margin:4px; font-size:13px; background:#0b1b3a; color:#eaf2ff;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)
+  }
   .bossHead{display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center}
+  .log{margin-top:8px; font-size:12px; color:#cfe3ff; opacity:.95}
+  .log .line{padding:4px 0; border-bottom:1px dashed #2a3142}
 </style>
 </head>
 <body>
@@ -99,6 +98,9 @@
         <button class="btn mini" id="poiMinus">−POI</button>
       </div>
     </div>
+
+    <!-- Boss event log -->
+    <div class="log" id="bossLog"></div>
   </div>
 
   <!-- HEROES -->
@@ -182,20 +184,20 @@
       <h3 id="rewTitle">Royal Defeated — Rewards</h3>
       <button class="btn" id="closeRewards">Close</button>
     </div>
-    <div class="sub" id="rewContext">Match suit → add FACE card you beat to your deck; otherwise pick a Generic one-time. Damage/poison carry to next Royal; heals/shields apply now.</div>
+    <div class="sub" id="rewContext">Each hero: auto-add upgrade card (J→5, Q→6, K→7, Joker→9). If your class suits match the Royal’s suit, you may also add the Legendary face card; otherwise pick a Generic (one-time). Damage/Poison carry over; heals/shields apply now.</div>
     <div class="grid2" style="margin-top:10px">
       <div class="list">
-        <div class="sub" style="margin-bottom:6px">Hero A</div>
+        <div class="sub" style="margin-bottom:6px">Hero A choices</div>
         <div id="choicesA"></div>
       </div>
       <div class="list">
-        <div class="sub" style="margin-bottom:6px">Hero B</div>
+        <div class="sub" style="margin-bottom:6px">Hero B choices</div>
         <div id="choicesB"></div>
       </div>
     </div>
     <div class="row" style="margin-top:10px">
       <button class="btn green" id="ackRewards">Next Royal</button>
-      <div class="sub">Face cards are added to discard; they appear after reshuffle.</div>
+      <div class="sub">Upgrades/Legendaries go to discard; appear after reshuffle.</div>
     </div>
   </div>
 </div>
@@ -214,12 +216,34 @@ const classMods={
   Priest:{maxHP:35,diamondCap:0,lucky:0,shield:0,heal:1,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects (heals route to lowest hero) */
+/* Legendary effects */
 const legendaryEffects={
   Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
   Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
   Assassin:{'J♣':h=>{deal(2);addPoison(1);},'Q♣':h=>{deal(2);addPoison(1);},'K♣':h=>deal(9),'J♠':h=>addPoison(1),'Q♠':h=>shield(3,h),'K♠':h=>addPoison(1)},
   Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
+};
+
+/* Generics by defeated rank (tie directly to face) */
+const GENERICS_ALL={
+  training:{id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
+  sprint:{id:'sprint',label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
+  parry:{id:'parry',label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
+  tactics:{id:'tactics',label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
+  rally:{id:'rally',label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
+  scout:{id:'scout',label:'Scout · +3⚔',run:(h)=>{deal(3)}},
+  resolve:{id:'resolve',label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
+  fortify:{id:'fortify',label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=getLowestHero(); t.maxHP+=1; t.hp=clamp(t.hp+1,0,t.maxHP)}},
+  purge:{id:'purge',label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
+  spark:{id:'spark',label:'Chaos Spark · +5⚔',run:(h)=>{deal(5)}},
+  trick:{id:'trick',label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
+  ward:{id:'ward',label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
+};
+const GENERIC_BY_RANK={
+  J:['training','sprint','parry'],
+  Q:['tactics','rally','scout'],
+  K:['resolve','fortify','purge'],
+  X:['spark','trick','ward'],
 };
 
 /* =================== Gauntlet =================== */
@@ -259,6 +283,12 @@ function toast(msg,kind='info'){
   d.textContent=msg; $('toasts').appendChild(d);
   setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600);
   setTimeout(()=>d.remove(),3000);
+}
+function logLine(text){
+  const el=document.createElement('div'); el.className='line'; el.textContent=text;
+  const log=$('bossLog'); log.prepend(el); // newest first
+  // keep last ~8
+  while(log.children.length>8) log.removeChild(log.lastChild);
 }
 function save(){try{localStorage.setItem('rc.fullgauntlet',JSON.stringify(S))}catch{}}
 function load(){
@@ -380,7 +410,7 @@ function nextBoss(){
   else{ toast('Gauntlet complete! New run generated.','good'); S.gauntlet=buildGauntlet(); setBossByIndex(0); }
 }
 
-/* New Game (full reset) */
+/* Full reset */
 function resetGame(){
   const clsA=S?.A?.cls||'Knight', clsB=S?.B?.cls||'Mage';
   S.gauntlet = buildGauntlet();
@@ -396,9 +426,15 @@ function resetGame(){
 function bossAbilityResolve(){
   const b=S.boss; const r=d12();
   if(b.rank==='J'){ b.jackPlus2=(r<=3); return `J roll ${r}: ${b.jackPlus2?'+2 DMG next attack':'no boost'}`; }
-  if(b.rank==='Q'){ if(r<=3){ const heal=Math.min(3,b.maxHP-b.hp); b.hp += heal; renderBossBar(); return `Q roll ${r}: healed +${heal}`; } return `Q roll ${r}: no heal`; }
-  if(b.rank==='K'){ if(r<=2){ const purged=b.poison; b.poison=0; return `K roll ${r}: purged ${purged} poison`; } return `K roll ${r}: no purge`; }
-  if(b.rank==='X'){ b.jokerTimes2=(r>=8&&r<=10); return `Joker roll ${r}: ${b.jokerTimes2?'x2 damage':''}${!b.jokerTimes2?'no double':''}`; }
+  if(b.rank==='Q'){
+    if(r<=3){ const heal=Math.min(3,b.maxHP-b.hp); b.hp += heal; renderBossBar(); return `Q roll ${r}: healed +${heal}`; }
+    return `Q roll ${r}: no heal`;
+  }
+  if(b.rank==='K'){
+    if(r<=2){ const purged=b.poison; b.poison=0; return `K roll ${r}: purged ${purged} poison`; }
+    return `K roll ${r}: no purge`;
+  }
+  if(b.rank==='X'){ b.jokerTimes2=(r>=8&&r<=10); return `Joker roll ${r}: ${b.jokerTimes2?'x2 damage':'no double'}`; }
   return `roll ${r}`;
 }
 function bossAttackResolve(){
@@ -422,27 +458,21 @@ function startNextRound(){
   render();
 }
 
-/* Auto-phase driver: called when BOTH heroes have no plays */
+/* Auto-phase driver */
 function doBossPhase(){
-  // Ongoing poison
+  // Poison tick
   if(S.boss.poison>0){
     const before=S.boss.hp;
     S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP);
     renderBossBar();
-    if(before!==S.boss.hp) toast(`Poison ticks for ${before-S.boss.hp}`,'good');
+    if(before!==S.boss.hp){ const t=before-S.boss.hp; toast(`Poison ticks for ${t}`,'good'); logLine(`Poison: −${t} HP`); }
     if(S.boss.hp<=0){ onBossDefeated('by Poison'); return; }
   }
-
   // Ability + Attack
-  const abilityMsg=bossAbilityResolve(); render();
-  const attackMsg=bossAttackResolve(); render();
+  const abilityMsg=bossAbilityResolve(); render(); logLine(`Ability → ${abilityMsg}`); toast(`Royal ability: ${abilityMsg}`);
+  const attackMsg=bossAttackResolve(); render(); logLine(`Attack → ${attackMsg}`); toast(`Royal attack: ${attackMsg}`);
 
-  toast(`Royal ability: ${abilityMsg}`);
-  toast(`Royal attack: ${attackMsg}`);
-
-  // If boss died from carry-over or other effects during attack, handle defeat
   if(S.boss.hp<=0){ onBossDefeated('defeated'); return; }
-
   startNextRound();
 }
 
@@ -509,32 +539,45 @@ function maybeDoBossPhase(){
   if(aDone && bDone){ doBossPhase(); }
 }
 
-/* Rewards */
-const GENERICS=[
-  {id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
-  {id:'sprint',  label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
-  {id:'parry',   label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
-  {id:'tactics', label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
-  {id:'rally',   label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
-  {id:'scout',   label:'Scout · +3⚔',run:(h)=>{deal(3)}},
-  {id:'resolve', label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
-  {id:'fortify', label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=getLowestHero(); t.maxHP+=1; t.hp=clamp(t.hp+1,0,t.maxHP)}},
-  {id:'purge',   label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
-  {id:'spark',   label:'Chaos Spark · +5⚔',run:(h)=>{deal(5)}},
-  {id:'trick',   label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
-  {id:'ward',    label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
-];
+/* --- Rewards --- */
 function autoTrashLowest(h,n=1){
   const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i}}); if(best>=0){arr.splice(best,1);return true} return false};
   for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
 }
-function onBossDefeated(reason='defeated'){ toast(`Royal ${reason} — rewards ready.`,'good'); openRewards(); }
-function openRewards(){ buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
+
+/* NEW: auto add upgrade 5/6/7/9 to each hero when a royal dies */
+function addUpgradeCardToHero(h, rank, suit){
+  const map={J:5,Q:6,K:7,X:9};
+  let v = map[rank];
+  let s = suit;
+  if(rank==='X'){ // Joker: choose random suit
+    s = SUITS[Math.floor(Math.random()*SUITS.length)];
+  }
+  const card={type:'num', v, s};
+  h.discard.push(card);
+  toast(`${h===S.A?'Hero A':'Hero B'}: +${v}${s} (upgrade)`, 'good');
+}
+
+/* Rewards flow */
+function onBossDefeated(reason='defeated'){
+  toast(`Royal ${reason} — rewards ready.`, 'good');
+  // auto add upgrades (both heroes)
+  addUpgradeCardToHero(S.A, S.boss.rank, S.boss.suit);
+  addUpgradeCardToHero(S.B, S.boss.rank, S.boss.suit);
+  openRewards();
+}
+function openRewards(){
+  buildChoices('A'); buildChoices('B');
+  $('rewardsOverlay').classList.add('show');
+}
 function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
+
 function buildChoices(w){
   const holder=$('choices'+w); holder.innerHTML='';
   const h=S[w], b=S.boss;
   const suitOK = b.rank!=='X' && classMods[h.cls].suits.includes(b.suit);
+
+  // Legendary option if suit matches
   if(suitOK){
     const key=`${b.rank}${b.suit}`;
     const btn=document.createElement('button');
@@ -542,10 +585,16 @@ function buildChoices(w){
     btn.onclick=()=>{ h.discard.push({type:'face',rank:b.rank,s:b.suit}); btn.disabled=true; btn.textContent='Added'; toast(`Hero ${w}: +${key}`,'good'); };
     holder.appendChild(btn);
     const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
-    info.textContent='Legendary plays automatically (no roll) when drawn.'; holder.appendChild(info);
-  }else{
-    GENERICS.forEach(g=>{ const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label;
-      tag.onclick=()=>{ g.run(h); tag.classList.add('hide'); render(); }; holder.appendChild(tag); });
+    info.textContent='Legendaries play automatically (no roll) when drawn.'; holder.appendChild(info);
+  } else {
+    // GENERICS limited to rank of defeated face
+    const keys = GENERIC_BY_RANK[b.rank] || [];
+    keys.forEach(k=>{
+      const g=GENERICS_ALL[k];
+      const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label;
+      tag.onclick=()=>{ g.run(h); tag.classList.add('hide'); render(); };
+      holder.appendChild(tag);
+    });
   }
 }
 $('ackRewards').addEventListener('click',()=>{ closeRewards(); nextBoss(); });
