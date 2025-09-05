@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Royal Crush — Two-Hero Tracker (Turn Flow)</title>
+<title>Royal Crush — Two-Hero Tracker (Turn Flow + Rewards)</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --ink:#e9eef6; --sub:#aab3c2;
     --line:#272c3b; --chip:#141a24; --chipline:#293143;
-    --accent:#60a5fa; --good:#34d399; --warn:#f59e0b; --bad:#ef4444;
+    --accent:#60a5fa; --good:#34d399; --warn:#f59e0b; --bad:#ef4444; --overlay:rgba(0,0,0,.55);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -24,8 +24,11 @@
   .btn{padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:#151924;color:#e9eef6;cursor:pointer}
   .btn:active{transform:translateY(1px)}
   .btn.red{background:#2a1215;border-color:#3a1a1e}
+  .btn.green{background:#13301f;border-color:#1b3e29}
+  .btn.gray{background:#141922;border-color:#252c3c}
   input,select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:#0f131b;color:#e9eef6}
   .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
+  .chip.bad{border-color:#5a1d21;background:#2a1516;color:#ffd6d6}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Courier New",monospace}
   .muted{opacity:.8}
   .hide{display:none}
@@ -34,11 +37,31 @@
   .section{margin-top:10px}
   .footer{margin-top:12px;display:flex;gap:10px;align-items:center}
   .mini{padding:2px 8px;font-size:11px}
+  .disabled{opacity:.6; pointer-events:none}
+  /* Toasts */
+  .toasts{position:fixed; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:9999}
+  .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .toast.bad{border-color:#5a1d21;background:#281215}
+  .toast.good{border-color:#1f3e29;background:#132018}
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:var(--overlay); display:none; align-items:center; justify-content:center; z-index:9998}
+  .overlay.show{display:flex}
+  .modal{width:min(860px,92vw); max-height:86vh; overflow:auto; background:#151922; border:1px solid #2a3040; border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.5); padding:14px}
+  .modal h3{margin:0 0 8px; font-size:16px}
+  .grid{display:grid; gap:10px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .small{font-size:12px}
+  .list{border:1px solid #2a3142; border-radius:10px; padding:10px}
+  .tag{display:inline-block; border:1px solid #2b3142; border-radius:6px; padding:2px 6px; margin:2px; font-size:12px; background:#121723}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Royal Crush — Two-Hero Tracker</h1>
+
+  <!-- Toast container -->
+  <div class="toasts" id="toasts"></div>
 
   <!-- Boss Panel -->
   <div class="card">
@@ -54,7 +77,7 @@
           <div style="font-size:22px;font-weight:700">
             <span id="hpNow">0</span>/<span id="hpMax">0</span>
           </div>
-          <!-- Poison right next to HP -->
+          <!-- Poison next to HP -->
           <div class="chip" title="Boss Poison at start of Boss Turn">
             POI: <span id="poiVal">0</span>
           </div>
@@ -157,8 +180,86 @@
       <input type="checkbox" id="perfModeChk" />
       <span class="sub">Performance Mode</span>
     </label>
-    <button class="btn" id="clearSaveBtn">Clear Save</button>
-    <button class="btn" id="resetBoss">Reset Royal</button>
+    <button class="btn gray" id="clearSaveBtn">Clear Save</button>
+    <button class="btn gray" id="resetBoss">Reset Royal</button>
+  </div>
+</div>
+
+<!-- Rewards Modal -->
+<div class="overlay" id="rewardsOverlay" role="dialog" aria-modal="true" aria-labelledby="rewTitle">
+  <div class="modal">
+    <div class="between" style="margin-bottom:8px">
+      <h3 id="rewTitle">Royal Defeated — Choose Rewards</h3>
+      <button class="btn" id="closeRewards">Close</button>
+    </div>
+
+    <div class="small sub" id="rewContext">You may take 1 reward per hero. Legendary choices are thematic; generics are one-time.</div>
+
+    <div class="grid g2" style="margin-top:10px">
+      <div class="list">
+        <div class="sub" style="margin-bottom:6px">Generic (one-time)</div>
+        <div>
+          <span class="tag">Training · +1⚔ +1♥</span>
+          <span class="tag">Sprint · +2⚔ self-1</span>
+          <span class="tag">Parry · IMM (block 1)</span>
+          <span class="tag">Tactics · +2⚔</span>
+          <span class="tag">Rally · +1⚔ +1♥</span>
+          <span class="tag">Scout · +3⚔</span>
+          <span class="tag">Resolve · +2♥</span>
+          <span class="tag">Fortify · +1 Max♥ +1♥</span>
+          <span class="tag">Purge · Trash 2</span>
+          <span class="tag">Chaos Spark · +5⚔</span>
+          <span class="tag">Chaos Trick · +3⚔</span>
+          <span class="tag">Chaos Ward · IMM (block 1)</span>
+        </div>
+      </div>
+      <div class="list">
+        <div class="sub" style="margin-bottom:6px">Legendary (by class)</div>
+        <div class="grid g2 small">
+          <div>
+            <div class="sub">Knight</div>
+            <div class="tag">J♣ · +6⚔</div>
+            <div class="tag">Q♣ · STO2; once/fight +1 play</div>
+            <div class="tag">K♣ · +⅓ BossHP +4⚔</div>
+            <div class="tag">J♥ · +4♥</div>
+            <div class="tag">Q♥ · +3♥</div>
+            <div class="tag">K♥ · IMM (block 1)</div>
+          </div>
+          <div>
+            <div class="sub">Mage</div>
+            <div class="tag">J♦ · +3⚔ +1♥</div>
+            <div class="tag">Q♦ · +4⚔</div>
+            <div class="tag">K♦ · +8⚔ +4☠</div>
+            <div class="tag">J♠ · +3☠</div>
+            <div class="tag">Q♠ · IMM (block 1)</div>
+            <div class="tag">K♠ · +2⚔ +2☠</div>
+          </div>
+          <div>
+            <div class="sub">Assassin</div>
+            <div class="tag">J♣ · +2⚔ +1☠</div>
+            <div class="tag">Q♣ · +2⚔ +1☠</div>
+            <div class="tag">K♣ · +9⚔</div>
+            <div class="tag">J♠ · +1☠</div>
+            <div class="tag">Q♠ · IMM (block 1)</div>
+            <div class="tag">K♠ · +1☠</div>
+          </div>
+          <div>
+            <div class="sub">Priest</div>
+            <div class="tag">J♥ · +2♥ +3⚔</div>
+            <div class="tag">Q♥ · +3♥ +3⚔</div>
+            <div class="tag">K♥ · Set ♥ = ½ Max</div>
+            <div class="tag">J♦ · +2⚔</div>
+            <div class="tag">Q♦ · +1⚔ +1♥</div>
+            <div class="tag">K♦ · +5⚔ +2☠ +2♥</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="btn green" id="ackRewards">Acknowledge Rewards</button>
+      <div class="sub small">Tip: Hand each hero one pick. Close to continue to next Royal.</div>
+    </div>
   </div>
 </div>
 
@@ -188,8 +289,8 @@ const mods = {
 let S = {
   perf:false,
   boss:{ id:'jack', name:'Jacks', hp:8, maxHP:8, atk:2, round:1, poison:0, jackPlus2:false, jokerTimes2:false },
-  A:{ cls:'Knight', hp:35, maxHP:35, plays:1, playsMax:1, diamond:0, shield:0 },
-  B:{ cls:'Mage',   hp:30, maxHP:30, plays:1, playsMax:1, diamond:0, shield:0 },
+  A:{ cls:'Knight', hp:35, maxHP:35, plays:1, playsMax:1, diamond:0, shield:0, down:false },
+  B:{ cls:'Mage',   hp:30, maxHP:30, plays:1, playsMax:1, diamond:0, shield:0, down:false },
 };
 
 const $=id=>document.getElementById(id);
@@ -203,6 +304,14 @@ const shieldVal=h=>BASE_SHIELD+(mods[h.cls]?.shield||0);
 const healVal=h=>BASE_HEAL+(mods[h.cls]?.heal||0);
 const poiVal=h=>BASE_POI+(mods[h.cls]?.poi||0);
 function hero(which){return which==='A'?S.A:S.B}
+function toast(msg, kind='info'){
+  const box = document.createElement('div');
+  box.className = 'toast ' + (kind==='bad'?'bad':kind==='good'?'good':'');
+  box.textContent = msg;
+  $('toasts').appendChild(box);
+  setTimeout(()=>{ box.style.opacity='0'; box.style.transition='opacity .35s'; }, 2600);
+  setTimeout(()=>{ box.remove(); }, 3000);
+}
 
 /* -------- Save/Load -------- */
 function save(){
@@ -231,8 +340,10 @@ function render(){
 
   $('hpA').textContent = S.A.hp;
   $('hpB').textContent = S.B.hp;
+
   updateStatus('A');
   updateStatus('B');
+  updateDisabled();
 
   save();
 }
@@ -240,10 +351,19 @@ function updateStatus(which){
   const h = hero(which);
   const el = $('status'+which);
   const bits=[];
+  if(h.down) bits.push('DOWN');
   if(h.shield>0) bits.push(`Shield ${h.shield}`);
   if(h.playsMax>BASE_PLAYS_PER_HERO) bits.push(`Plays ${h.plays}/${h.playsMax}`);
   el.textContent = bits.join(' • ');
   el.classList.toggle('hide', bits.length===0);
+}
+function updateDisabled(){
+  // Disable roll if hero down
+  const aDown = S.A.down, bDown = S.B.down;
+  $('rollA').classList.toggle('disabled', aDown);
+  $('valA').disabled = aDown; $('suitA').disabled = aDown;
+  $('rollB').classList.toggle('disabled', bDown);
+  $('valB').disabled = bDown; $('suitB').disabled = bDown;
 }
 
 /* -------- Boss control -------- */
@@ -271,8 +391,10 @@ function bossAbility(){
   render();
 }
 function bossTurn(){
-  // 1) POI tick (now that it's next to HP, this matches the visual)
+  // 1) POI tick
   if(S.boss.poison>0){ S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP); }
+  // Boss defeated by poison?
+  if(S.boss.hp<=0){ onBossDefeated('Defeated by POISON'); return; }
 
   // 2) Damage with ability flags
   let dmg = S.boss.atk;
@@ -287,14 +409,34 @@ function bossTurn(){
   const reduced = Math.max(0, dmg - h.shield);
   h.shield = 0;
   h.hp = clamp(h.hp - reduced, 0, h.maxHP);
+  $('abilityOut').textContent = `Boss dealt ${reduced} to ${h===S.A?'A':'B'}`;
+
+  // 4b) Hero defeat check
+  if(h.hp<=0 && !h.down){
+    h.down = true;
+    toast(`Hero ${h===S.A?'A':'B'} defeated!`, 'bad');
+  }
 
   // 5) Next round setup
   S.boss.round += 1;
   S.boss.jackPlus2 = false; S.boss.jokerTimes2 = false;
   ['A','B'].forEach(k=>{ S[k].plays=BASE_PLAYS_PER_HERO; S[k].playsMax=BASE_PLAYS_PER_HERO; S[k].diamond=0; });
 
-  $('abilityOut').textContent = `Boss dealt ${reduced} to ${h===S.A?'A':'B'}`;
   render();
+}
+
+/* -------- Rewards handling -------- */
+function onBossDefeated(reason='Defeated'){
+  $('abilityOut').textContent = `Royal ${reason}`;
+  toast(`Royal defeated — claim rewards!`, 'good');
+  // Show rewards modal
+  $('rewardsOverlay').classList.add('show');
+  // Reset boss flags so next royal starts clean
+  S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
+  render();
+}
+function closeRewards(){
+  $('rewardsOverlay').classList.remove('show');
 }
 
 /* -------- Hero actions -------- */
@@ -307,6 +449,7 @@ function classApply(which, cls){
   render();
 }
 function spendPlay(h){
+  if(h.down) return false;
   if(h.plays<=0) return false;
   h.plays -= 1;
   render();
@@ -322,6 +465,8 @@ function grantDiamond(h){
 }
 function heroRoll(which){
   const h = hero(which);
+  if(h.down){ toast(`Hero ${which} is defeated and cannot act.`, 'bad'); return; }
+
   const val = Number($(which==='A'?'valA':'valB').value);
   const suit = (which==='A'?$('suitA').value:$('suitB').value);
   const outR = $(which==='A'?'rollOutA':'rollOutB');
@@ -333,9 +478,16 @@ function heroRoll(which){
   outR.textContent = `d12: ${r}`;
 
   // Fumble
-  if(r===12){ spendPlay(h); h.hp = clamp(h.hp-1,0,h.maxHP); outT.textContent='Fumble (self-1)'; render(); return; }
+  if(r===12){
+    spendPlay(h);
+    h.hp = clamp(h.hp-1,0,h.maxHP);
+    outT.textContent='Fumble (self-1)';
+    if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${which} defeated!`, 'bad'); }
+    render();
+    return;
+  }
   // Miss
-  if(r>val){  spendPlay(h); outT.textContent='Miss'; render(); return; }
+  if(r>val){ spendPlay(h); outT.textContent='Miss'; render(); return; }
 
   // Hit
   if(!spendPlay(h)) return;
@@ -350,6 +502,10 @@ function heroRoll(which){
   else if(suit==='diamond'){ grantDiamond(h); tag += ` • ♦ +1 play`; }
 
   outT.textContent = tag;
+
+  // Boss defeat check (by direct damage)
+  if(S.boss.hp<=0){ onBossDefeated('reduced to 0'); }
+
   render();
 }
 
@@ -375,13 +531,17 @@ function init(){
   $('poiMinus').addEventListener('click', ()=>{ S.boss.poison=Math.max(0,S.boss.poison-1); render(); });
   $('resetBoss').addEventListener('click', ()=>pickBoss(S.boss.id));
 
+  // Rewards modal
+  $('closeRewards').addEventListener('click', closeRewards);
+  $('ackRewards').addEventListener('click', closeRewards);
+
   // Heroes
   $('classA').addEventListener('change', e=>classApply('A', e.target.value));
   $('classB').addEventListener('change', e=>classApply('B', e.target.value));
-  $('hpAMinus').addEventListener('click', ()=>{ S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); render(); });
-  $('hpAPlus').addEventListener('click',  ()=>{ S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); render(); });
-  $('hpBMinus').addEventListener('click', ()=>{ S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); render(); });
-  $('hpBPlus').addEventListener('click',  ()=>{ S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); render(); });
+  $('hpAMinus').addEventListener('click', ()=>{ S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); if(S.A.hp<=0 && !S.A.down){ S.A.down=true; toast('Hero A defeated!','bad'); } render(); });
+  $('hpAPlus').addEventListener('click',  ()=>{ S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); if(S.A.hp>0 && S.A.down){ S.A.down=false; toast('Hero A revived to 1+ HP','good'); } render(); });
+  $('hpBMinus').addEventListener('click', ()=>{ S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); if(S.B.hp<=0 && !S.B.down){ S.B.down=true; toast('Hero B defeated!','bad'); } render(); });
+  $('hpBPlus').addEventListener('click',  ()=>{ S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); if(S.B.hp>0 && S.B.down){ S.B.down=false; toast('Hero B revived to 1+ HP','good'); } render(); });
   $('rollA').addEventListener('click', ()=>heroRoll('A'));
   $('rollB').addEventListener('click', ()=>heroRoll('B'));
 
