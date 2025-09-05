@@ -7,11 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f1115">
 <style>
-  :root{
-    --bg:#0f1115; --panel:#171a21; --ink:#e9eef6; --sub:#aab3c2;
-    --line:#272c3b; --chip:#141a24; --chipline:#293143;
-    --accent:#60a5fa; --good:#34d399; --warn:#f59e0b; --bad:#ef4444; --overlay:rgba(0,0,0,.55);
-  }
+  :root{--bg:#0f1115;--panel:#171a21;--ink:#e9eef6;--sub:#aab3c2;--line:#272c3b;--chip:#141a24;--chipline:#293143;--accent:#60a5fa;--good:#34d399;--warn:#f59e0b;--bad:#ef4444;--overlay:rgba(0,0,0,.55)}
   *{box-sizing:border-box}
   body{margin:0;background:#0f1115;color:#e9eef6;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
   .wrap{max-width:980px;margin:0 auto;padding:14px}
@@ -29,7 +25,7 @@
   .btn.gray{background:#141922;border-color:#252c3c}
   .mini{padding:2px 8px;font-size:11px}
   input,select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:#0f131b;color:#e9eef6}
-  .chip{background:var(--chip);border:1px solid --chipline;border:1px solid #293143;border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
+  .chip{background:#141a24;border:1px solid #293143;border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
   .chip.bad{border-color:#5a1d21;background:#2a1516;color:#ffd6d6}
   .chip.good{border-color:#1f3e29;background:#132018;color:#d7ffe3}
   .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
@@ -37,24 +33,20 @@
   .step>h2{margin:0 0 8px;font-size:14px;color:#cfe3ff}
   .hand{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
   .cardlet{min-width:40px;padding:8px;border-radius:8px;border:1px solid #2b3244;background:#121722;cursor:pointer}
-  .cardlet.sel{outline:2px solid #60a5fa; outline-offset:2px}
+  .cardlet.sel{outline:2px solid #60a5fa;outline-offset:2px}
   .hide{display:none}
-
-  /* Toasts */
-  .toasts{position:fixed; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:9999}
-  .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .toasts{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+  .toast{background:#121722;border:1px solid #2b3142;border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.bad{border-color:#5a1d21;background:#281215}
   .toast.good{border-color:#1f3e29;background:#132018}
-
-  /* Modal */
-  .overlay{position:fixed; inset:0; background:var(--overlay); display:none; align-items:center; justify-content:center; z-index:9998}
+  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:9998}
   .overlay.show{display:flex}
-  .modal{width:min(920px,94vw); max-height:86vh; overflow:auto; background:#151922; border:1px solid #2a3040; border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.5); padding:14px}
-  .modal h3{margin:0 0 8px; font-size:16px}
-  .grid{display:grid; gap:10px}
+  .modal{width:min(920px,94vw);max-height:86vh;overflow:auto;background:#151922;border:1px solid #2a3040;border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.5);padding:14px}
+  .modal h3{margin:0 0 8px;font-size:16px}
+  .grid{display:grid;gap:10px}
   .g2{grid-template-columns:1fr 1fr}
-  .list{border:1px solid #2a3142; border-radius:10px; padding:10px}
-  .tag{display:inline-block; border:1px solid #2b3142; border-radius:6px; padding:3px 6px; margin:3px; font-size:12px; background:#121723}
+  .list{border:1px solid #2a3142;border-radius:10px;padding:10px}
+  .tag{display:inline-block;border:1px solid #2b3142;border-radius:6px;padding:3px 6px;margin:3px;font-size:12px;background:#121723}
 </style>
 </head>
 <body>
@@ -62,7 +54,6 @@
   <h1>Royal Crush — Full Gauntlet</h1>
   <div class="toasts" id="toasts"></div>
 
-  <!-- Boss Panel -->
   <div class="card">
     <div class="between">
       <div>
@@ -73,9 +64,7 @@
       <div style="text-align:right">
         <div class="sub">Boss HP</div>
         <div class="row" style="justify-content:flex-end">
-          <div style="font-size:22px;font-weight:700">
-            <span id="hpNow">0</span>/<span id="hpMax">0</span>
-          </div>
+          <div style="font-size:22px;font-weight:700"><span id="hpNow">0</span>/<span id="hpMax">0</span></div>
           <div class="chip">POI: <span id="poiVal">0</span></div>
           <button class="btn mini" id="poiPlus">+1</button>
           <button class="btn mini" id="poiMinus">-1</button>
@@ -84,27 +73,19 @@
     </div>
     <div class="bar" style="margin:8px 0 10px"><span id="hpBar" style="width:0%"></span></div>
 
-    <!-- Progress -->
-    <div class="sub" id="prog" style="margin:4px 0 10px; opacity:.86">Run: —</div>
+    <div class="sub" id="prog" style="margin:4px 0 10px;opacity:.86">Run: —</div>
 
-    <!-- Step 1: Hero A -->
+    <!-- Hero A -->
     <div class="step">
       <h2>Step 1 — Hero A acts</h2>
       <div class="row">
-        <select id="classA">
-          <option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option>
-        </select>
+        <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
         <div class="chip">HP: <span id="hpA">35</span></div>
         <button class="btn mini" id="hpAMinus">-1</button>
         <button class="btn mini" id="hpAPlus">+1</button>
-        <div class="chip hide" id="statusA"></div>
+        <button class="btn gray mini" id="forfeitA">Forfeit & Redraw</button>
       </div>
-
-      <div class="row" style="margin-top:6px">
-        <div class="sub">Hand (tap to select):</div>
-        <div id="handA" class="hand"></div>
-      </div>
-
+      <div class="row" style="margin-top:6px"><div class="sub">Hand (tap to select):</div><div id="handA" class="hand"></div></div>
       <div class="row" style="margin-top:6px">
         <button class="btn" id="rollA">Play Selected & Roll d12</button>
         <button class="btn gray mini" id="drawA">Draw Up</button>
@@ -114,24 +95,17 @@
       <div class="row"><div class="chip">Deck <span id="deckCountA">0</span></div><div class="chip">Discard <span id="discCountA">0</span></div><div class="chip">Hand <span id="handCountA">0</span></div></div>
     </div>
 
-    <!-- Step 2: Hero B -->
+    <!-- Hero B -->
     <div class="step">
       <h2>Step 2 — Hero B acts</h2>
       <div class="row">
-        <select id="classB">
-          <option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option>
-        </select>
+        <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
         <div class="chip">HP: <span id="hpB">30</span></div>
         <button class="btn mini" id="hpBMinus">-1</button>
         <button class="btn mini" id="hpBPlus">+1</button>
-        <div class="chip hide" id="statusB"></div>
+        <button class="btn gray mini" id="forfeitB">Forfeit & Redraw</button>
       </div>
-
-      <div class="row" style="margin-top:6px">
-        <div class="sub">Hand (tap to select):</div>
-        <div id="handB" class="hand"></div>
-      </div>
-
+      <div class="row" style="margin-top:6px"><div class="sub">Hand (tap to select):</div><div id="handB" class="hand"></div></div>
       <div class="row" style="margin-top:6px">
         <button class="btn" id="rollB">Play Selected & Roll d12</button>
         <button class="btn gray mini" id="drawB">Draw Up</button>
@@ -141,16 +115,11 @@
       <div class="row"><div class="chip">Deck <span id="deckCountB">0</span></div><div class="chip">Discard <span id="discCountB">0</span></div><div class="chip">Hand <span id="handCountB">0</span></div></div>
     </div>
 
-    <!-- Step 3: Boss ability -->
+    <!-- Boss ability & turn -->
     <div class="step">
       <h2>Step 3 — Boss ability (optional)</h2>
-      <div class="row">
-        <button class="btn" id="abilityBtn">Roll Ability (d12)</button>
-        <div class="chip mono" id="abilityOut">—</div>
-      </div>
+      <div class="row"><button class="btn" id="abilityBtn">Roll Ability (d12)</button><div class="chip mono" id="abilityOut">—</div></div>
     </div>
-
-    <!-- Step 4: Boss turn -->
     <div class="step">
       <h2>Step 4 — Boss Turn → Next Round</h2>
       <div class="row">
@@ -165,14 +134,10 @@
     </div>
   </div>
 
-  <!-- Footer -->
   <div class="row" style="margin-top:10px">
     <button class="btn gray" id="newRunBtn">New Run</button>
     <button class="btn gray" id="resetBoss">Reset Current Royal</button>
-    <label class="row" style="gap:6px;margin-left:auto">
-      <input type="checkbox" id="perfModeChk" />
-      <span class="sub">Performance Mode</span>
-    </label>
+    <label class="row" style="gap:6px;margin-left:auto"><input type="checkbox" id="perfModeChk" /><span class="sub">Performance Mode</span></label>
   </div>
 </div>
 
@@ -183,40 +148,21 @@
       <h3 id="rewTitle">Royal Defeated — Rewards</h3>
       <button class="btn" id="closeRewards">Close</button>
     </div>
-    <div class="sub" id="rewContext">Each hero picks ONE. If the boss suit matches your class affinity, add the FACE CARD you beat to your deck. Otherwise pick a Generic one-time effect. Damage/poison carry into the next Royal automatically.</div>
-
+    <div class="sub" id="rewContext">Match suit → add FACE card you beat to your deck; otherwise pick a Generic. Damage/poison carry to next Royal; heals/shields apply now.</div>
     <div class="grid g2" style="margin-top:10px">
-      <div class="list">
-        <div class="sub" style="margin-bottom:6px">Hero A</div>
-        <div id="choicesA"></div>
-      </div>
-      <div class="list">
-        <div class="sub" style="margin-bottom:6px">Hero B</div>
-        <div id="choicesB"></div>
-      </div>
+      <div class="list"><div class="sub" style="margin-bottom:6px">Hero A</div><div id="choicesA"></div></div>
+      <div class="list"><div class="sub" style="margin-bottom:6px">Hero B</div><div id="choicesB"></div></div>
     </div>
-
-    <div class="row" style="margin-top:10px">
-      <button class="btn green" id="ackRewards">Next Royal</button>
-      <div class="sub">Face cards are added to discard; they appear after reshuffle.</div>
-    </div>
+    <div class="row" style="margin-top:10px"><button class="btn green" id="ackRewards">Next Royal</button><div class="sub">Face cards are added to discard; they appear after reshuffle.</div></div>
   </div>
 </div>
 
 <script>
-/* =================== Rules & Data =================== */
-/* Boss definitions by rank (suit comes from gauntlet card) */
-const bossDefs = {
-  J:{ name:'Jacks',  maxHP:8,  atk:2 },
-  Q:{ name:'Queens', maxHP:14, atk:4 },
-  K:{ name:'Kings',  maxHP:18, atk:5 },
-  X:{ name:'Jokers', maxHP:26, atk:6 }, // X = Joker (no suit)
-};
-
+/* ==== Boss defs & Gauntlet ==== */
+const bossDefs={J:{name:'Jacks',maxHP:8,atk:2},Q:{name:'Queens',maxHP:14,atk:4},K:{name:'Kings',maxHP:18,atk:5},X:{name:'Jokers',maxHP:26,atk:6}};
 const DMG_PER_HIT=5, BASE_PLAYS=1, BASE_DIAMOND_CAP=2, BASE_SHIELD=3, BASE_HEAL=3, BASE_POI=1;
 const SUITS=['♣','♠','♥','♦'], VALUES=[2,3,4,5,6,7,8,9];
 
-/* Class mods + suit affinities (for Legendary eligibility) */
 const classMods={
   Knight:{maxHP:35,diamondCap:0,lucky:0,shield:1,heal:0,poi:0,suits:['♣','♥']},
   Mage:{  maxHP:30,diamondCap:1,lucky:1,shield:0,heal:0,poi:0,suits:['♦','♠']},
@@ -224,38 +170,24 @@ const classMods={
   Priest:{maxHP:35,diamondCap:0,lucky:0,shield:0,heal:1,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects (auto resolve, no roll) */
+/* Legendary effects (call teamHeal for any heals) */
 const legendaryEffects={
-  Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>heal(4,h),'Q♥':h=>heal(3,h),'K♥':h=>shield(3,h)},
-  Mage:{'J♦':h=>{deal(3);heal(1,h);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
+  Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
+  Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
   Assassin:{'J♣':h=>{deal(2);addPoison(1);},'Q♣':h=>{deal(2);addPoison(1);},'K♣':h=>deal(9),'J♠':h=>addPoison(1),'Q♠':h=>shield(3,h),'K♠':h=>addPoison(1)},
-  Priest:{'J♥':h=>{heal(2,h);deal(3);},'Q♥':h=>{heal(3,h);deal(3);},'K♥':h=>{h.hp=Math.max(h.hp,Math.ceil(h.maxHP/2));},'J♦':h=>deal(2),'Q♦':h=>{deal(1);heal(1,h);},'K♦':h=>{deal(5);addPoison(2);heal(2,h);}},
+  Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2));},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
 };
 
-/* =================== Gauntlet =================== */
-function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
-function buildGauntlet(){
-  const j = shuffle([...SUITS]).map(s=>({rank:'J', suit:s}));
-  const q = shuffle([...SUITS]).map(s=>({rank:'Q', suit:s}));
-  const k = shuffle([...SUITS]).map(s=>({rank:'K', suit:s}));
-  const jokers = [{rank:'X', suit:'X'},{rank:'X', suit:'X'}];
-  return [...j, ...q, ...k, ...jokers];
-}
-function labelCard(c){ return c.rank==='X' ? 'Joker' : `${c.rank}${c.suit}`; }
+/* Gauntlet */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function buildGauntlet(){const j=shuffle([...SUITS]).map(s=>({rank:'J',suit:s}));const q=shuffle([...SUITS]).map(s=>({rank:'Q',suit:s}));const k=shuffle([...SUITS]).map(s=>({rank:'K',suit:s}));return[...j,...q,...k,{rank:'X',suit:'X'},{rank:'X',suit:'X'}]}
+function labelCard(c){return c.rank==='X'?'Joker':`${c.rank}${c.suit}`}
 
-/* =================== State =================== */
-let S={
-  gauntlet: buildGauntlet(),
-  gauntletIndex: 0,
-  boss: { rank:'J', suit:'♦', name:'Jacks', hp:8, maxHP:8, atk:2, round:1, poison:0, jackPlus2:false, jokerTimes2:false },
-  A: makeHero('Knight'),
-  B: makeHero('Mage'),
-  selA:null, selB:null
-};
-/* Rewards carry-over applied to the next boss */
-let carry={damage:0, poison:0};
+/* ==== State ==== */
+let S={gauntlet:buildGauntlet(),gauntletIndex:0,boss:{rank:'J',suit:'♦',name:'Jacks',hp:8,maxHP:8,atk:2,round:1,poison:0,jackPlus2:false,jokerTimes2:false},A:makeHero('Knight'),B:makeHero('Mage'),selA:null,selB:null};
+let carry={damage:0,poison:0};
 
-/* =================== Helpers =================== */
+/* ==== Helpers ==== */
 const $=id=>document.getElementById(id);
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const d12=()=>Math.floor(Math.random()*12)+1;
@@ -265,263 +197,184 @@ const capPlays=h=>BASE_DIAMOND_CAP+(classMods[h.cls].diamondCap||0);
 const shieldVal=h=>BASE_SHIELD+(classMods[h.cls].shield||0);
 const healVal=h=>BASE_HEAL+(classMods[h.cls].heal||0);
 const poiVal=h=>BASE_POI+(classMods[h.cls].poi||0);
+function toast(msg,kind='info'){const d=document.createElement('div');d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':'');d.textContent=msg;$('toasts').appendChild(d);setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600);setTimeout(()=>d.remove(),3000)}
+function save(){try{localStorage.setItem('rc.fullgauntlet',JSON.stringify(S))}catch{}}
+function load(){const raw=localStorage.getItem('rc.fullgauntlet');if(!raw)return;try{const o=JSON.parse(raw);S={...S,...o};['A','B'].forEach(k=>{const h=S[k];if(!Array.isArray(h.deck))h.deck=startDeck();if(!Array.isArray(h.discard))h.discard=[];if(!Array.isArray(h.hand))h.hand=[];h.plays=BASE_PLAYS;h.playsMax=BASE_PLAYS;h.diamond=0})}catch{}}
 
-function toast(msg,kind='info'){const d=document.createElement('div');d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':'');d.textContent=msg;$('toasts').appendChild(d);setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600);setTimeout(()=>d.remove(),3000);}
+/* ==== Heroes & Decks ==== */
+function makeHero(cls){const m=classMods[cls];return{cls,hp:m.maxHP,maxHP:m.maxHP,plays:BASE_PLAYS,playsMax:BASE_PLAYS,diamond:0,shield:0,down:false,deck:startDeck(),discard:[],hand:[]}}
+function startDeck(){const d=[];[2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s})));return shuffle(d)}
+function drawOne(w){const h=S[w];if(h.deck.length===0){if(h.discard.length===0)return false;h.deck=shuffle(h.discard.splice(0))}h.hand.push(h.deck.pop());return true}
+function drawUp(w,size=4){const h=S[w];while(h.hand.length<size&&(h.deck.length>0||h.discard.length>0))drawOne(w)}
+function discardHand(w){const h=S[w]; while(h.hand.length){h.discard.push(h.hand.pop())}}
 
-/* Save/Load */
-function save(){ try{ localStorage.setItem('rc.fullgauntlet', JSON.stringify(S)); }catch{} }
-function load(){
-  const raw=localStorage.getItem('rc.fullgauntlet'); if(!raw) return;
-  try{
-    const o=JSON.parse(raw); S={...S,...o};
-    ['A','B'].forEach(k=>{ const h=S[k]; if(!Array.isArray(h.deck)) h.deck=startDeck(); if(!Array.isArray(h.discard)) h.discard=[]; if(!Array.isArray(h.hand)) h.hand=[]; h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0; });
-  }catch{}
+/* ==== Lowest-HP heal routing ==== */
+function getLowestHero(){ // prefer reviving DOWN hero if tie by hp
+  const a=S.A,b=S.B;
+  if(a.hp<=0 && b.hp>0) return a;
+  if(b.hp<=0 && a.hp>0) return b;
+  return (a.hp<=b.hp)?a:b;
+}
+function teamHeal(n){
+  const t = getLowestHero();
+  const wasDown = t.down && t.hp<=0;
+  t.hp = clamp(t.hp + n, 0, t.maxHP);
+  if(wasDown && t.hp>0){ t.down=false; toast('Revived the lowest-HP hero','good'); }
 }
 
-/* =================== Heroes & Decks =================== */
-function makeHero(cls){
-  const m=classMods[cls];
-  return {cls, hp:m.maxHP, maxHP:m.maxHP, plays:BASE_PLAYS, playsMax:BASE_PLAYS, diamond:0, shield:0, down:false, deck:startDeck(), discard:[], hand:[]};
-}
-function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s}))); return shuffle(d); }
-
-function drawOne(w){
-  const h=S[w];
-  if(h.deck.length===0){ if(h.discard.length===0) return false; h.deck = shuffle(h.discard.splice(0)); }
-  h.hand.push(h.deck.pop()); return true;
-}
-function drawUp(w,size=4){ const h=S[w]; while(h.hand.length<size && (h.deck.length>0||h.discard.length>0)) drawOne(w); }
-
-/* =================== Rendering =================== */
+/* ==== Rendering ==== */
 function render(){
-  $('bossName').textContent = `${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
-  $('bossStats').textContent = `HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
-  $('hpNow').textContent = S.boss.hp; $('hpMax').textContent = S.boss.maxHP;
-  $('hpBar').style.width = Math.max(0,Math.min(100,(S.boss.hp/S.boss.maxHP)*100))+'%';
-  $('poiVal').textContent = S.boss.poison;
-  $('roundOut').textContent = 'R'+S.boss.round;
-
-  const parts = S.gauntlet.map((c,i)=> i===S.gauntletIndex ? `[${labelCard(c)}]` : labelCard(c));
-  $('prog').textContent = 'Run: ' + parts.join(' → ');
-
-  renderHero('A'); renderHero('B');
-  save();
+  $('bossName').textContent=`${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
+  $('bossStats').textContent=`HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
+  $('hpNow').textContent=S.boss.hp; $('hpMax').textContent=S.boss.maxHP;
+  $('hpBar').style.width=Math.max(0,Math.min(100,(S.boss.hp/S.boss.maxHP)*100))+'%';
+  $('poiVal').textContent=S.boss.poison;
+  $('roundOut').textContent='R'+S.boss.round;
+  const parts=S.gauntlet.map((c,i)=>i===S.gauntletIndex?`[${labelCard(c)}]`:labelCard(c));
+  $('prog').textContent='Run: '+parts.join(' → ');
+  renderHero('A');renderHero('B'); save();
 }
 function renderHero(w){
   const h=S[w];
   $('hp'+w).textContent=h.hp;
-  $('deckCount'+w).textContent=h.deck.length;
-  $('discCount'+w).textContent=h.discard.length;
-  $('handCount'+w).textContent=h.hand.length;
-
+  $('deckCount'+w).textContent=h.deck.length; $('discCount'+w).textContent=h.discard.length; $('handCount'+w).textContent=h.hand.length;
   const zone=$('hand'+w); zone.innerHTML='';
-  h.hand.forEach((c,i)=>{
-    const el=document.createElement('button'); el.className='cardlet btn';
-    if((w==='A'?S.selA:S.selB)===i) el.classList.add('sel');
-    el.textContent = c.type==='num' ? `${c.v}${c.s}` : `${c.rank}${c.s}`;
-    el.onclick=()=>{ if(w==='A') S.selA=(S.selA===i?null:i); else S.selB=(S.selB===i?null:i); render(); };
-    zone.appendChild(el);
-  });
+  h.hand.forEach((c,i)=>{const el=document.createElement('button');el.className='cardlet btn';if((w==='A'?S.selA:S.selB)===i)el.classList.add('sel');el.textContent=(c.type==='num')?`${c.v}${c.s}`:`${c.rank}${c.s}`;el.onclick=()=>{if(w==='A')S.selA=(S.selA===i?null:i);else S.selB=(S.selB===i?null:i);render()};zone.appendChild(el)})
 }
 
-/* =================== Boss lifecycle =================== */
+/* ==== Boss lifecycle ==== */
 function setBossByIndex(i){
-  S.gauntletIndex = i;
-  const card = S.gauntlet[i];              // {rank:'J'|'Q'|'K'|'X', suit:'♣'|…|'X'}
-  const def  = bossDefs[card.rank];
-
-  S.boss = {
-    rank: card.rank,
-    suit: card.suit,
-    name: def.name,
-    hp: def.maxHP,
-    maxHP: def.maxHP,
-    atk: def.atk,
-    round: 1,
-    poison: 0,
-    jackPlus2: false,
-    jokerTimes2: false
-  };
-
-  // Apply queued carry-over to the NEW boss now
-  if(carry.damage>0){ S.boss.hp = Math.max(0, S.boss.hp - carry.damage); }
-  if(carry.poison>0){ S.boss.poison += carry.poison; }
-  if(carry.damage>0 || carry.poison>0){
-    toast(`Carry-over → −${carry.damage||0} DMG, +${carry.poison||0} POI`, 'good');
-  }
-  carry.damage=0; carry.poison=0;
-
-  // Reset heroes for new fight, draw up
-  ['A','B'].forEach(k=>{ const h=S[k]; h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0; h.shield=0; });
-  drawUp('A'); drawUp('B');
-  render();
+  S.gauntletIndex=i; const card=S.gauntlet[i]; const def=bossDefs[card.rank];
+  S.boss={rank:card.rank,suit:card.suit,name:def.name,hp:def.maxHP,maxHP:def.maxHP,atk:def.atk,round:1,poison:0,jackPlus2:false,jokerTimes2:false};
+  if(carry.damage>0){S.boss.hp=Math.max(0,S.boss.hp-carry.damage)} if(carry.poison>0){S.boss.poison+=carry.poison}
+  if(carry.damage>0||carry.poison>0){toast(`Carry-over → −${carry.damage||0} DMG, +${carry.poison||0} POI`,'good')}
+  carry.damage=0;carry.poison=0;
+  ['A','B'].forEach(k=>{const h=S[k];h.plays=BASE_PLAYS;h.playsMax=BASE_PLAYS;h.diamond=0;h.shield=0});
+  drawUp('A');drawUp('B'); render();
 }
-function nextBoss(){
-  if(S.gauntletIndex < S.gauntlet.length-1){
-    setBossByIndex(S.gauntletIndex+1);
-  }else{
-    toast('Gauntlet complete! New run generated.','good');
-    S.gauntlet = buildGauntlet();
-    setBossByIndex(0);
-  }
-}
+function nextBoss(){ if(S.gauntletIndex<S.gauntlet.length-1){setBossByIndex(S.gauntletIndex+1)}else{toast('Gauntlet complete! New run generated.','good');S.gauntlet=buildGauntlet();setBossByIndex(0)}}
 
-/* =================== Boss mechanics =================== */
+/* ==== Boss mechanics ==== */
 function bossAbility(){
   const b=S.boss; const r=d12(); let msg=`d12: ${r} • DMG ${b.atk}`;
-  if(b.rank==='J'){ b.jackPlus2=(r<=3); if(b.jackPlus2) msg=`d12: ${r} • DMG ${b.atk+2} (base ${b.atk}+2)`; }
-  else if(b.rank==='Q'){ if(r<=3){ b.hp=clamp(b.hp+3,0,b.maxHP); msg=`d12: ${r} • Heal +3 • DMG ${b.atk}`; } }
-  else if(b.rank==='K'){ if(r<=2){ b.poison=0; msg=`d12: ${r} • Purge POI • DMG ${b.atk}`; } }
-  else if(b.rank==='X'){ b.jokerTimes2=(r>=8&&r<=10); if(b.jokerTimes2) msg=`d12: ${r} • DMG ${b.atk*2} (×2)`; }
+  if(b.rank==='J'){b.jackPlus2=(r<=3); if(b.jackPlus2) msg=`d12: ${r} • DMG ${b.atk+2} (base ${b.atk}+2)`;}
+  else if(b.rank==='Q'){if(r<=3){b.hp=clamp(b.hp+3,0,b.maxHP); msg=`d12: ${r} • Heal +3 • DMG ${b.atk}`;}}
+  else if(b.rank==='K'){if(r<=2){b.poison=0; msg=`d12: ${r} • Purge POI • DMG ${b.atk}`;}}
+  else if(b.rank==='X'){b.jokerTimes2=(r>=8&&r<=10); if(b.jokerTimes2) msg=`d12: ${r} • DMG ${b.atk*2} (×2)`;}
   $('abilityOut').textContent=msg; render();
 }
 function bossTurn(){
-  if(S.boss.poison>0){ S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP); }
-  if(S.boss.hp<=0){ onBossDefeated('by Poison'); return; }
-
-  let dmg=S.boss.atk;
-  if(S.boss.rank==='J' && S.boss.jackPlus2) dmg+=2;
-  if(S.boss.rank==='X' && S.boss.jokerTimes2) dmg*=2;
-
-  const tgtSel=$('bossTarget').value;
-  const tgt=(tgtSel==='AUTO')?((S.A.hp<=S.B.hp)?'A':'B'):tgtSel;
-  const h=S[tgt];
-  const reduced=Math.max(0,dmg-h.shield); h.shield=0;
-  h.hp=clamp(h.hp-reduced,0,h.maxHP);
+  if(S.boss.poison>0){S.boss.hp=clamp(S.boss.hp-S.boss.poison,0,S.boss.maxHP)}
+  if(S.boss.hp<=0){onBossDefeated('by Poison');return}
+  let dmg=S.boss.atk; if(S.boss.rank==='J'&&S.boss.jackPlus2)dmg+=2; if(S.boss.rank==='X'&&S.boss.jokerTimes2)dmg*=2;
+  const tgtSel=$('bossTarget').value; const tgt=(tgtSel==='AUTO')?((S.A.hp<=S.B.hp)?'A':'B'):tgtSel;
+  const h=S[tgt]; const reduced=Math.max(0,dmg-h.shield); h.shield=0; h.hp=clamp(h.hp-reduced,0,h.maxHP);
   $('abilityOut').textContent=`Boss dealt ${reduced} to ${tgt}`;
-
-  if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${tgt} defeated!`,'bad'); }
-
+  if(h.hp<=0 && !h.down){h.down=true;toast(`Hero ${tgt} defeated!`,'bad')}
   S.boss.round+=1; S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
-  ['A','B'].forEach(k=>{ const hh=S[k]; hh.plays=BASE_PLAYS; hh.playsMax=BASE_PLAYS; hh.diamond=0; drawUp(k); });
-  render();
+  ['A','B'].forEach(k=>{const hh=S[k];hh.plays=BASE_PLAYS;hh.playsMax=BASE_PLAYS;hh.diamond=0;drawUp(k)}); render();
 }
 
-/* =================== Effects (combat & rewards) =================== */
-function deal(n){ if(S.boss.hp>0){ S.boss.hp = Math.max(0, S.boss.hp - n); } else { carry.damage += n; } }
-function heal(n,h){ h.hp = clamp(h.hp + n, 0, h.maxHP); }
-function shield(n,h){ h.shield = (h.shield||0) + n; }
-function addPlay(h){ const cap=capPlays(h); if(h.playsMax<BASE_PLAYS+cap){ h.plays+=1; h.playsMax+=1; } }
-function addPoison(n){ if(S.boss.hp>0){ S.boss.poison += n; } else { carry.poison += n; } }
+/* ==== Effects / carry-over ==== */
+function deal(n){ if(S.boss.hp>0){S.boss.hp=Math.max(0,S.boss.hp-n)} else {carry.damage+=n} }
+function shield(n,h){ h.shield=(h.shield||0)+n }
+function addPlay(h){ const cap=capPlays(h); if(h.playsMax<BASE_PLAYS+cap){h.plays+=1;h.playsMax+=1} }
+function addPoison(n){ if(S.boss.hp>0){S.boss.poison+=n}else{carry.poison+=n} }
 
-/* =================== Play a card =================== */
+/* ==== Play/Forfeit ==== */
 function playSelected(w){
-  const h=S[w];
-  if(h.down){ toast(`Hero ${w} is defeated.`,'bad'); return; }
-  if(h.plays<=0){ toast(`Hero ${w} has no plays.`,'bad'); return; }
-  const idx=(w==='A'?S.selA:S.selB); if(idx==null){ toast(`Select a card in ${w}'s hand first.`,'bad'); return; }
-
-  const [card] = h.hand.splice(idx,1); h.discard.push(card);
-  if(w==='A') S.selA=null; else S.selB=null;
-
+  const h=S[w]; if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
+  if(h.plays<=0){toast(`Hero ${w} has no plays.`,'bad');return}
+  const idx=(w==='A'?S.selA:S.selB); if(idx==null){toast(`Select a card in ${w}'s hand first.`,'bad');return}
+  const [card]=h.hand.splice(idx,1); h.discard.push(card); if(w==='A')S.selA=null; else S.selB=null;
   const outR=$('rollOut'+w), outT=$('result'+w);
 
   if(card.type==='face'){
     const key=`${card.rank}${card.s}`; const eff=(legendaryEffects[h.cls]||{})[key];
-    if(eff){ eff(h); outR.textContent=`FACE ${key}`; outT.textContent=`Legendary played`; }
-    else { outR.textContent=`FACE ${key}`; outT.textContent=`No effect configured`; }
-    h.plays-=1; if(S.boss.hp<=0){ onBossDefeated('by damage'); } render(); return;
+    outR.textContent=`FACE ${key}`;
+    if(typeof eff==='function'){ eff(h); outT.textContent='Legendary played'; }
+    else { outT.textContent='Legendary (no effect configured)'; }
+    h.plays-=1; if(S.boss.hp<=0){onBossDefeated('by damage')} render(); return;
   }
 
-  // Number card: roll to hit
   const r=d12(); outR.textContent=`d12: ${r}`;
-  if(r===12){ h.plays-=1; h.hp=clamp(h.hp-1,0,h.maxHP); outT.textContent='Fumble (self-1)'; if(h.hp<=0&&!h.down){h.down=true;toast(`Hero ${w} defeated!`,'bad');} render(); return; }
-  if(r>card.v){ h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); return; }
+  if(r===12){h.plays-=1; const wasDown=h.down; const target=getLowestHero(); target.hp=clamp(target.hp-1,0,target.maxHP); if(!wasDown && target.hp<=0) target.down=true; outT.textContent='Fumble (lowest hero −1)'; render(); return;}
+  if(r>card.v){h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); return;}
 
   h.plays-=1;
-  let dmg=DMG_PER_HIT; if(r===1) dmg+=lucky(h); deal(dmg);
+  let dmg=DMG_PER_HIT; if(r===1)dmg+=lucky(h); deal(dmg);
   let tag=`Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){ shield(shieldVal(h),h); tag+=` • ♣ Shield +${shieldVal(h)}`; }
-  else if(card.s==='♥'){ heal(healVal(h),h); tag+=` • ♥ Heal +${healVal(h)}`; }
+  else if(card.s==='♥'){ teamHeal(healVal(h)); tag+=` • ♥ Heal to lowest +${healVal(h)}`; }
   else if(card.s==='♠'){ addPoison(poiVal(h)); tag+=` • ♠ POI +${poiVal(h)}`; }
   else if(card.s==='♦'){ addPlay(h); tag+=' • ♦ +1 play'; }
   outT.textContent=tag;
-
-  if(S.boss.hp<=0){ onBossDefeated('by damage'); }
+  if(S.boss.hp<=0){ onBossDefeated('by damage') }
   render();
 }
 
-/* =================== Rewards =================== */
-const GENERICS=[
-  {id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{ deal(1); heal(1,h); }},
-  {id:'sprint',  label:'Sprint · +2⚔, self-1',run:(h)=>{ deal(2); h.hp=clamp(h.hp-1,0,h.maxHP); }},
-  {id:'parry',   label:'Parry · IMM (block 1)',run:(h)=>{ shield(3,h); }},
-  {id:'tactics', label:'Tactics · +2⚔',run:(h)=>{ deal(2); }},
-  {id:'rally',   label:'Rally · +1⚔ +1♥',run:(h)=>{ deal(1); heal(1,h); }},
-  {id:'scout',   label:'Scout · +3⚔',run:(h)=>{ deal(3); }},
-  {id:'resolve', label:'Resolve · +2♥',run:(h)=>{ heal(2,h); }},
-  {id:'fortify', label:'Fortify · +1 Max♥ +1♥',run:(h)=>{ h.maxHP+=1; heal(1,h); }},
-  {id:'purge',   label:'Purge · Trash 2 lowest',run:(h)=>{ autoTrashLowest(h,2); }},
-  {id:'spark',   label:'Chaos Spark · +5⚔',run:(h)=>{ deal(5); }},
-  {id:'trick',   label:'Chaos Trick · +3⚔',run:(h)=>{ deal(3); }},
-  {id:'ward',    label:'Chaos Ward · IMM',run:(h)=>{ shield(3,h); }},
-];
-
-function autoTrashLowest(h,n=1){
-  const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i;}}); if(best>=0){arr.splice(best,1);return true;} return false;};
-  for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
+function forfeitAndRedraw(w){
+  const h=S[w];
+  if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
+  if(h.plays<=0){toast(`Hero ${w} already spent plays.`,'bad');return}
+  discardHand(w); drawUp(w); h.plays=0; h.playsMax=Math.max(h.playsMax,BASE_PLAYS); // end turn
+  toast(`Hero ${w} forfeits and redraws.`, 'good'); render();
 }
 
-function onBossDefeated(reason='defeated'){ $('abilityOut').textContent=`Royal ${reason}`; toast(`Royal defeated — rewards ready.`, 'good'); openRewards(); }
-
-function openRewards(){ buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
-function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
-
+/* ==== Rewards ==== */
+const GENERICS=[
+  {id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
+  {id:'sprint',  label:'Sprint · +2⚔, self-1',run:(h)=>{deal(2);const t=getLowestHero(); t.hp=clamp(t.hp-1,0,t.maxHP)}},
+  {id:'parry',   label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
+  {id:'tactics', label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
+  {id:'rally',   label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
+  {id:'scout',   label:'Scout · +3⚔',run:(h)=>{deal(3)}},
+  {id:'resolve', label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
+  {id:'fortify', label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=getLowestHero(); t.maxHP+=1; t.hp=clamp(t.hp+1,0,t.maxHP)}},
+  {id:'purge',   label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
+  {id:'spark',   label:'Chaos Spark · +5⚔',run:(h)=>{deal(5)}},
+  {id:'trick',   label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
+  {id:'ward',    label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
+];
+function autoTrashLowest(h,n=1){const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i}});if(best>=0){arr.splice(best,1);return true}return false};for(let i=0;i<n;i++){if(take(h.hand))continue;if(take(h.discard))continue;if(take(h.deck))continue}}
+function onBossDefeated(reason='defeated'){$('abilityOut').textContent=`Royal ${reason}`;toast(`Royal defeated — rewards ready.`,'good');openRewards()}
+function openRewards(){buildChoices('A');buildChoices('B');$('rewardsOverlay').classList.add('show')}
+function closeRewards(){$('rewardsOverlay').classList.remove('show')}
 function buildChoices(w){
-  const holder=$('choices'+w); holder.innerHTML='';
-  const h=S[w]; const b=S.boss;
-  const suitOK = b.rank!=='X' && classMods[h.cls].suits.includes(b.suit);
-
+  const holder=$('choices'+w);holder.innerHTML='';const h=S[w];const b=S.boss;const suitOK=b.rank!=='X'&&classMods[h.cls].suits.includes(b.suit);
   if(suitOK){
-    const key=`${b.rank}${b.suit}`;
-    const btn=document.createElement('button');
-    btn.className='btn green';
-    btn.textContent=`Add ${key} to deck (Legendary)`;
-    btn.onclick=()=>{ h.discard.push({type:'face',rank:b.rank,s:b.suit}); btn.disabled=true; btn.textContent='Added'; toast(`Hero ${w}: +${key}`,'good'); };
-    holder.appendChild(btn);
-    const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
-    info.textContent='Legendary plays automatically (no roll) when drawn.';
-    holder.appendChild(info);
+    const key=`${b.rank}${b.suit}`;const btn=document.createElement('button');btn.className='btn green';btn.textContent=`Add ${key} to deck (Legendary)`;btn.onclick=()=>{h.discard.push({type:'face',rank:b.rank,s:b.suit});btn.disabled=true;btn.textContent='Added';toast(`Hero ${w}: +${key}`,'good')};holder.appendChild(btn);
+    const info=document.createElement('div');info.className='sub';info.style.marginTop='6px';info.textContent='Legendary plays automatically (no roll) when drawn.';holder.appendChild(info);
   }else{
-    GENERICS.forEach(g=>{ const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label; tag.onclick=()=>{ g.run(h); tag.classList.add('hide'); render(); }; holder.appendChild(tag); });
+    GENERICS.forEach(g=>{const tag=document.createElement('button');tag.className='tag';tag.textContent=g.label;tag.onclick=()=>{g.run(h);tag.classList.add('hide');render()};holder.appendChild(tag)})
   }
 }
+$('ackRewards').addEventListener('click',()=>{closeRewards();nextBoss()}); $('closeRewards').addEventListener('click',closeRewards);
 
-$('ackRewards').addEventListener('click', ()=>{ closeRewards(); nextBoss(); });
-$('closeRewards').addEventListener('click', closeRewards);
-
-/* =================== Wire-up & Init =================== */
+/* ==== Wire-up ==== */
 function init(){
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
   document.addEventListener('touchstart',()=>{}, {passive:true});
   load();
 
-  $('abilityBtn').onclick=bossAbility;
-  $('bossTurnBtn').onclick=bossTurn;
-  $('poiPlus').onclick=()=>{ S.boss.poison+=1; render(); };
-  $('poiMinus').onclick=()=>{ S.boss.poison=Math.max(0,S.boss.poison-1); render(); };
-  $('resetBoss').onclick=()=>setBossByIndex(S.gauntletIndex);
-  $('newRunBtn').onclick=()=>{ S.gauntlet=buildGauntlet(); setBossByIndex(0); };
+  $('abilityBtn').onclick=bossAbility; $('bossTurnBtn').onclick=bossTurn;
+  $('poiPlus').onclick=()=>{S.boss.poison+=1;render()}; $('poiMinus').onclick=()=>{S.boss.poison=Math.max(0,S.boss.poison-1);render()};
+  $('resetBoss').onclick=()=>setBossByIndex(S.gauntletIndex); $('newRunBtn').onclick=()=>{S.gauntlet=buildGauntlet();setBossByIndex(0)};
 
-  $('classA').onchange=e=>setClass('A',e.target.value);
-  $('classB').onchange=e=>setClass('B',e.target.value);
-  $('hpAMinus').onclick=()=>{ S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); if(S.A.hp<=0 && !S.A.down){S.A.down=true; toast('Hero A defeated!','bad');} render(); };
-  $('hpAPlus').onclick =()=>{ const was=S.A.down; S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); if(was && S.A.hp>0){ S.A.down=false; toast('Hero A revived','good'); } render(); };
-  $('hpBMinus').onclick=()=>{ S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); if(S.B.hp<=0 && !S.B.down){S.B.down=true; toast('Hero B defeated!','bad');} render(); };
-  $('hpBPlus').onclick =()=>{ const was=S.B.down; S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); if(was && S.B.hp>0){ S.B.down=false; toast('Hero B revived','good'); } render(); };
+  $('classA').onchange=e=>setClass('A',e.target.value); $('classB').onchange=e=>setClass('B',e.target.value);
+  $('hpAMinus').onclick=()=>{S.A.hp=clamp(S.A.hp-1,0,S.A.maxHP); if(S.A.hp<=0&&!S.A.down){S.A.down=true;toast('Hero A defeated!','bad')} render()};
+  $('hpAPlus').onclick =()=>{const was=S.A.down; S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); if(was&&S.A.hp>0){S.A.down=false;toast('Hero A revived','good')} render()};
+  $('hpBMinus').onclick=()=>{S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); if(S.B.hp<=0&&!S.B.down){S.B.down=true;toast('Hero B defeated!','bad')} render()};
+  $('hpBPlus').onclick =()=>{const was=S.B.down; S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); if(was&&S.B.hp>0){S.B.down=false;toast('Hero B revived','good')} render()};
 
-  $('drawA').onclick=()=>{ drawUp('A'); render(); };
-  $('drawB').onclick=()=>{ drawUp('B'); render(); };
-  $('rollA').onclick=()=>playSelected('A');
-  $('rollB').onclick=()=>playSelected('B');
+  $('drawA').onclick=()=>{drawUp('A');render()}; $('drawB').onclick=()=>{drawUp('B');render()};
+  $('rollA').onclick=()=>playSelected('A'); $('rollB').onclick=()=>playSelected('B');
+  $('forfeitA').onclick=()=>forfeitAndRedraw('A'); $('forfeitB').onclick=()=>forfeitAndRedraw('B');
 
-  // open hands + first boss
-  if(S.A.hand.length===0) drawUp('A');
-  if(S.B.hand.length===0) drawUp('B');
-  setBossByIndex(S.gauntletIndex||0);
-  render();
+  if(S.A.hand.length===0)drawUp('A'); if(S.B.hand.length===0)drawUp('B');
+  setBossByIndex(S.gauntletIndex||0); render();
 }
-function setClass(w,cls){ const h=S[w]; const r=h.hp/h.maxHP||1; h.cls=cls; h.maxHP=classMods[cls].maxHP; h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP); render(); }
+function setClass(w,cls){const h=S[w];const r=h.hp/h.maxHP||1;h.cls=cls;h.maxHP=classMods[cls].maxHP;h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);render()}
 init();
 </script>
 </body>
