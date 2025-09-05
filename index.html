@@ -212,10 +212,10 @@ const classMods={
   Knight:{maxHP:35,diamondCap:0,lucky:0,shield:1,heal:0,poi:0,suits:['♣','♥']},
   Mage:{  maxHP:30,diamondCap:1,lucky:1,shield:0,heal:0,poi:0,suits:['♦','♠']},
   Assassin:{maxHP:30,diamondCap:0,lucky:0,shield:0,heal:0,poi:1,suits:['♣','♠']},
-  Priest:{maxHP:35,diamondCap:0,lucky:0,shield:0,heal:1,poi:0,suits:['♥','♦']},
+  Priest:{maxHP:35,diamondCap:0,lucky:0,heal:1,shield:0,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects */
+/* Legendary effects (no IMM anywhere; shields only) */
 const legendaryEffects={
   Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
   Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
@@ -223,11 +223,11 @@ const legendaryEffects={
   Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
 };
 
-/* Generics by defeated rank */
+/* Generics by defeated rank — Parry/Ward now Guard +2, and EVERY generic also trashes 1 lowest */
 const GENERICS_ALL={
   training:{id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
   sprint:{id:'sprint',label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
-  parry:{id:'parry',label:'Parry · IMM (block 1)',run:(h)=>{shield(3,h)}},
+  parry:{id:'parry',label:'Parry · Guard +2',run:(h)=>{shield(2,h)}},
   tactics:{id:'tactics',label:'Tactics · +2⚔',run:(h)=>{deal(2)}},
   rally:{id:'rally',label:'Rally · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
   scout:{id:'scout',label:'Scout · +3⚔',run:(h)=>{deal(3)}},
@@ -236,7 +236,7 @@ const GENERICS_ALL={
   purge:{id:'purge',label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
   spark:{id:'spark',label:'Chaos Spark · +5⚔',run:(h)=>{deal(5)}},
   trick:{id:'trick',label:'Chaos Trick · +3⚔',run:(h)=>{deal(3)}},
-  ward:{id:'ward',label:'Chaos Ward · IMM',run:(h)=>{shield(3,h)}},
+  ward:{id:'ward',label:'Chaos Ward · Guard +2',run:(h)=>{shield(2,h)}},
 };
 const GENERIC_BY_RANK={ J:['training','sprint','parry'], Q:['tactics','rally','scout'], K:['resolve','fortify','purge'], X:['spark','trick','ward'] };
 
@@ -260,7 +260,7 @@ let S={
   selA:null, selB:null
 };
 let carry={damage:0,poison:0};
-// NEW: remember who the boss hit last
+// Track who the boss hit last for alternation
 let lastBossTarget = null;
 
 /* =================== Helpers =================== */
@@ -329,19 +329,13 @@ function getLowestAliveHero(){
   if(b) return b;
   return null;
 }
-function getLowestAliveHeroKey(){
-  const a=S.A.hp>0 ? 'A' : null;
-  const b=S.B.hp>0 ? 'B' : null;
-  if(a && b) return (S.A.hp<=S.B.hp)?'A':'B';
-  return a||b; // may be null if both dead
-}
 function teamHurt(n){
-  const t=getLowestAliveHero(); if(!t) return; // both down → skip
+  const t=getLowestAliveHero(); if(!t) return;
   t.hp = clamp(t.hp - n, 0, t.maxHP);
   if(t.hp<=0) t.down=true;
 }
 function teamHeal(n){
-  const t=getLowestHero(); // allow revives
+  const t=getLowestHero();
   const wasDown = t.down || t.hp<=0;
   t.hp = clamp(t.hp + n, 0, t.maxHP);
   if(wasDown && t.hp>0){ t.down=false; toast('Revived the lowest-HP hero','good'); }
@@ -413,8 +407,8 @@ function resetGame(){
   S.A = makeHero(clsA);
   S.B = makeHero(clsB);
   carry.damage=0; carry.poison=0;
-  setBossByIndex(0);
   lastBossTarget=null;
+  setBossByIndex(0);
   toast('New game started: fresh gauntlet & decks.','good');
 }
 
@@ -434,41 +428,15 @@ function bossAbilityResolve(){
   return `roll ${r}`;
 }
 
-/* NEW: target selection with Shield-first + No-Double-Tap */
-function pickTargetForBoss(){
-  // Shielded candidates first
-  const shielded=[];
-  if (S.A.hp>0 && S.A.shield>0) shielded.push('A');
-  if (S.B.hp>0 && S.B.shield>0) shielded.push('B');
-
-  if (shielded.length===1) return shielded[0];
-  if (shielded.length===2){
-    // prefer higher shield; tie -> lower HP; avoid double-tap if possible
-    const sorted = shielded.slice().sort((x,y)=>{
-      const hx=S[x], hy=S[y];
-      if (hx.shield!==hy.shield) return hy.shield-hx.shield;
-      if (hx.hp!==hy.hp) return hx.hp-hy.hp; // lower HP first
-      return x==='A'?-1:1;
-    });
-    if (lastBossTarget && sorted[0]===lastBossTarget) return sorted[1]; // try the other
-    return sorted[0];
-  }
-
-  // No shields → both alive?
-  const alive=[];
-  if (S.A.hp>0) alive.push('A');
-  if (S.B.hp>0) alive.push('B');
-  if (alive.length===0) return null;
-  if (alive.length===1) return alive[0];
-
-  // Avoid same target twice if possible
-  if (lastBossTarget && alive.includes(lastBossTarget)){
-    const other = lastBossTarget==='A'?'B':'A';
-    if (S[other].hp>0) return other;
-  }
-
-  // Fallback: lowest HP alive (original)
-  return (S.A.hp<=S.B.hp)?'A':'B';
+/* STRICT ALTERNATION targeting (A ↔ B), skipping downed hero if needed */
+function pickTargetAlternating(){
+  // First hit of game defaults to A if alive else B
+  if (lastBossTarget===null) return (S.A.hp>0) ? 'A' : (S.B.hp>0 ? 'B' : null);
+  // Otherwise, alternate to the other hero if alive; if not, hit whoever is alive
+  const other = (lastBossTarget==='A') ? 'B' : 'A';
+  if (S[other].hp>0) return other;
+  if (S[lastBossTarget].hp>0) return lastBossTarget;
+  return null;
 }
 
 function bossAttackResolve(){
@@ -477,17 +445,17 @@ function bossAttackResolve(){
   if(S.boss.rank==='J'&&S.boss.jackPlus2) dmg+=2;
   if(S.boss.rank==='X'&&S.boss.jokerTimes2) dmg*=2;
 
-  const tgtKey = pickTargetForBoss();
+  const tgtKey = pickTargetAlternating();
   if(!tgtKey) return 'No living targets';
   const h=S[tgtKey];
 
   const reduced=Math.max(0,dmg-h.shield);
-  h.shield = 0; // consume shield
+  h.shield = 0; // consume any guard
   h.hp = clamp(h.hp - reduced, 0, h.maxHP);
-  lastBossTarget = tgtKey; // remember
+  lastBossTarget = tgtKey;
 
   if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${tgtKey} defeated!`,'bad'); }
-  return `Boss targeted ${tgtKey} (no double-tap) and dealt ${reduced}`;
+  return `Boss targeted ${tgtKey} (alternating) and dealt ${reduced}`;
 }
 
 function startNextRound(){
@@ -499,17 +467,6 @@ function startNextRound(){
 
 /* Auto-phase driver */
 function doBossPhase(){
-  // Grit: tiny safety net to lowest-HP ALIVE hero
-  (function applyGrit(){
-    const aAlive=S.A.hp>0, bAlive=S.B.hp>0;
-    if(!aAlive && !bAlive) return;
-    let target=null;
-    if(aAlive && bAlive) target=(S.A.hp<=S.B.hp)?S.A:S.B;
-    else target=aAlive?S.A:S.B;
-    target.shield=(target.shield||0)+1;
-    logLine(`Grit: +1 shield to lowest-HP hero`);
-  })();
-
   // Poison tick
   if(S.boss.poison>0){
     const before=S.boss.hp;
@@ -589,7 +546,7 @@ function maybeDoBossPhase(){
   if(aDone && bDone){ doBossPhase(); }
 }
 
-/* --- Rewards --- */
+/* --- Rewards & Trash --- */
 function autoTrashLowest(h,n=1){
   const take=arr=>{let best=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;best=i}}); if(best>=0){arr.splice(best,1);return true} return false};
   for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
@@ -600,7 +557,7 @@ function addUpgradeCardToHero(h, rank, suit){
   const map={J:5,Q:6,K:7,X:9};
   let v = map[rank];
   let s = suit;
-  if(rank==='X'){ // Joker: choose random suit
+  if(rank==='X'){ // Joker: random suit
     s = SUITS[Math.floor(Math.random()*SUITS.length)];
   }
   const card={type:'num', v, s};
@@ -637,12 +594,12 @@ function buildChoices(w){
     const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
     info.textContent='Legendaries play automatically (no roll) when drawn.'; holder.appendChild(info);
   } else {
-    // GENERICS limited to rank of defeated face
+    // GENERICS limited to rank of defeated face — and ALWAYS trash 1 additional lowest
     const keys = GENERIC_BY_RANK[b.rank] || [];
     keys.forEach(k=>{
       const g=GENERICS_ALL[k];
-      const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label;
-      tag.onclick=()=>{ g.run(h); tag.classList.add('hide'); render(); };
+      const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label + ' + Trash 1';
+      tag.onclick=()=>{ g.run(h); autoTrashLowest(h,1); tag.classList.add('hide'); toast(`Hero ${w}: Trashed lowest card (on generic)`, 'good'); render(); };
       holder.appendChild(tag);
     });
   }
@@ -660,7 +617,7 @@ function init(){
   $('poiMinus').onclick=()=>{ S.boss.poison=Math.max(0,S.boss.poison-1); render(); };
 
   $('resetBoss').onclick=resetGame;
-  $('newRunBtn').onclick = ()=>{ S.gauntlet=buildGauntlet(); setBossByIndex(0); toast('New run: fresh gauntlet order.','good'); };
+  $('newRunBtn').onclick = ()=>{ S.gauntlet=buildGauntlet(); setBossByIndex(0); lastBossTarget=null; toast('New run: fresh gauntlet order.','good'); };
 
   $('classA').onchange=e=>setClass('A',e.target.value);
   $('classB').onchange=e=>setClass('B',e.target.value);
