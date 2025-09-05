@@ -260,6 +260,8 @@ let S={
   selA:null, selB:null
 };
 let carry={damage:0,poison:0};
+// NEW: remember who the boss hit last
+let lastBossTarget = null;
 
 /* =================== Helpers =================== */
 const $=id=>document.getElementById(id);
@@ -412,6 +414,7 @@ function resetGame(){
   S.B = makeHero(clsB);
   carry.damage=0; carry.poison=0;
   setBossByIndex(0);
+  lastBossTarget=null;
   toast('New game started: fresh gauntlet & decks.','good');
 }
 
@@ -431,18 +434,41 @@ function bossAbilityResolve(){
   return `roll ${r}`;
 }
 
-/* NEW: target selection prioritizing shields */
+/* NEW: target selection with Shield-first + No-Double-Tap */
 function pickTargetForBoss(){
-  const cand=[];
-  if (S.A.hp>0 && S.A.shield>0) cand.push({k:'A', hp:S.A.hp, sh:S.A.shield});
-  if (S.B.hp>0 && S.B.shield>0) cand.push({k:'B', hp:S.B.hp, sh:S.B.shield});
-  if (cand.length===1) return cand[0].k;
-  if (cand.length===2){
-    if (cand[0].sh !== cand[1].sh) return cand[0].sh>cand[1].sh ? cand[0].k : cand[1].k;
-    return cand[0].hp<=cand[1].hp ? cand[0].k : cand[1].k; // tie → lower HP
+  // Shielded candidates first
+  const shielded=[];
+  if (S.A.hp>0 && S.A.shield>0) shielded.push('A');
+  if (S.B.hp>0 && S.B.shield>0) shielded.push('B');
+
+  if (shielded.length===1) return shielded[0];
+  if (shielded.length===2){
+    // prefer higher shield; tie -> lower HP; avoid double-tap if possible
+    const sorted = shielded.slice().sort((x,y)=>{
+      const hx=S[x], hy=S[y];
+      if (hx.shield!==hy.shield) return hy.shield-hx.shield;
+      if (hx.hp!==hy.hp) return hx.hp-hy.hp; // lower HP first
+      return x==='A'?-1:1;
+    });
+    if (lastBossTarget && sorted[0]===lastBossTarget) return sorted[1]; // try the other
+    return sorted[0];
   }
-  // No shielded targets → lowest HP alive
-  return getLowestAliveHeroKey(); // may be null if both dead
+
+  // No shields → both alive?
+  const alive=[];
+  if (S.A.hp>0) alive.push('A');
+  if (S.B.hp>0) alive.push('B');
+  if (alive.length===0) return null;
+  if (alive.length===1) return alive[0];
+
+  // Avoid same target twice if possible
+  if (lastBossTarget && alive.includes(lastBossTarget)){
+    const other = lastBossTarget==='A'?'B':'A';
+    if (S[other].hp>0) return other;
+  }
+
+  // Fallback: lowest HP alive (original)
+  return (S.A.hp<=S.B.hp)?'A':'B';
 }
 
 function bossAttackResolve(){
@@ -456,11 +482,14 @@ function bossAttackResolve(){
   const h=S[tgtKey];
 
   const reduced=Math.max(0,dmg-h.shield);
-  h.shield = 0;               // consume shield regardless of reduction
+  h.shield = 0; // consume shield
   h.hp = clamp(h.hp - reduced, 0, h.maxHP);
+  lastBossTarget = tgtKey; // remember
+
   if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${tgtKey} defeated!`,'bad'); }
-  return `Boss targeted ${tgtKey} (shield first) and dealt ${reduced}`;
+  return `Boss targeted ${tgtKey} (no double-tap) and dealt ${reduced}`;
 }
+
 function startNextRound(){
   S.boss.round += 1;
   S.boss.jackPlus2=false; S.boss.jokerTimes2=false;
@@ -470,6 +499,17 @@ function startNextRound(){
 
 /* Auto-phase driver */
 function doBossPhase(){
+  // Grit: tiny safety net to lowest-HP ALIVE hero
+  (function applyGrit(){
+    const aAlive=S.A.hp>0, bAlive=S.B.hp>0;
+    if(!aAlive && !bAlive) return;
+    let target=null;
+    if(aAlive && bAlive) target=(S.A.hp<=S.B.hp)?S.A:S.B;
+    else target=aAlive?S.A:S.B;
+    target.shield=(target.shield||0)+1;
+    logLine(`Grit: +1 shield to lowest-HP hero`);
+  })();
+
   // Poison tick
   if(S.boss.poison>0){
     const before=S.boss.hp;
