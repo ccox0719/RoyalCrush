@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Royal Crush — Two-Hero Tracker (Simple)</title>
+<title>Royal Crush — Two-Hero Tracker (Turn Flow)</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --ink:#e9eef6; --sub:#aab3c2;
@@ -16,9 +16,8 @@
   .wrap{max-width:900px;margin:0 auto;padding:16px}
   h1{margin:0 0 12px;font-size:20px}
   .card{background:#171a21;border:1px solid var(--line);border-radius:14px;padding:14px}
-  .grid{display:grid;gap:10px}
-  .g2{grid-template-columns:1fr 1fr}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .between{display:flex;justify-content:space-between;align-items:center}
   .bar{height:12px;background:#0e1420;border:1px solid #283045;border-radius:999px;overflow:hidden}
   .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--good))}
   .sub{color:var(--sub);font-size:12px}
@@ -28,10 +27,13 @@
   input,select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:#0f131b;color:#e9eef6}
   .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#cfe3ff}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Courier New",monospace}
-  .section{display:flex;justify-content:space-between;align-items:flex-end}
   .muted{opacity:.8}
-  .footer{margin-top:12px;display:flex;gap:10px;align-items:center}
   .hide{display:none}
+  .step{margin-top:10px}
+  .step>h2{margin:0 0 8px;font-size:14px;color:#cfe3ff}
+  .section{margin-top:10px}
+  .footer{margin-top:12px;display:flex;gap:10px;align-items:center}
+  .mini{padding:2px 8px;font-size:11px}
 </style>
 </head>
 <body>
@@ -39,8 +41,8 @@
   <h1>Royal Crush — Two-Hero Tracker</h1>
 
   <!-- Boss Panel -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="section">
+  <div class="card">
+    <div class="between">
       <div>
         <div class="sub">Royal</div>
         <div style="font-size:20px;font-weight:700" id="bossName">—</div>
@@ -48,126 +50,103 @@
       </div>
       <div style="text-align:right">
         <div class="sub">Boss HP</div>
-        <div style="font-size:22px;font-weight:700">
-          <span id="hpNow">0</span>/<span id="hpMax">0</span>
+        <div class="row" style="justify-content:flex-end">
+          <div style="font-size:22px;font-weight:700">
+            <span id="hpNow">0</span>/<span id="hpMax">0</span>
+          </div>
+          <!-- Poison right next to HP -->
+          <div class="chip" title="Boss Poison at start of Boss Turn">
+            POI: <span id="poiVal">0</span>
+          </div>
+          <button class="btn mini" id="poiPlus" title="Poison +1">+1</button>
+          <button class="btn mini" id="poiMinus" title="Poison -1">-1</button>
         </div>
       </div>
     </div>
     <div class="bar" style="margin:8px 0 10px"><span id="hpBar" style="width:0%"></span></div>
 
-    <div class="grid" style="grid-template-columns:2fr 1fr">
-      <div class="card" style="padding:10px">
-        <div class="row">
-          <button class="btn" id="abilityBtn">Boss Ability (d12)</button>
-          <div class="chip mono" id="abilityOut">—</div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <select id="bossTarget">
-            <option value="AUTO" selected>Target: Auto (lowest HP)</option>
-            <option value="A">Target: Hero A</option>
-            <option value="B">Target: Hero B</option>
-          </select>
-          <button class="btn red" id="bossTurnBtn">Boss Turn → Next Round</button>
-          <div class="chip mono" id="roundOut">R1</div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn" id="poiPlus">POI +1</button>
-          <button class="btn" id="poiMinus">POI -1</button>
-          <div class="chip">POI: <span id="poiVal">0</span></div>
-        </div>
-      </div>
-
-      <div class="card" style="padding:10px">
-        <div class="sub" style="margin-bottom:6px">Change Royal</div>
-        <div class="row" id="bossButtons"></div>
-      </div>
-    </div>
-    <div class="sub muted" style="margin-top:6px">J 8/2 (≤3 +2) • Q 14/4 (≤3 heal3) • K 18/5 (≤2 purge) • Joker 26/6 (8–10 ×2)</div>
-  </div>
-
-  <!-- Heroes -->
-  <div class="grid g2">
-    <!-- A -->
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div class="sub">Hero A</div>
-        <select id="classA">
-          <option>Knight</option>
-          <option>Mage</option>
-          <option>Assassin</option>
-          <option>Priest</option>
+    <!-- Turn Order -->
+    <div class="step">
+      <h2>Step 1 — Hero A acts</h2>
+      <div class="row">
+        <select id="classA" title="Class">
+          <option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option>
         </select>
+        <div class="chip">HP: <span id="hpA">35</span></div>
+        <button class="btn mini" id="hpAMinus">-1</button>
+        <button class="btn mini" id="hpAPlus">+1</button>
+        <div class="chip hide" id="statusA"></div>
       </div>
-      <div class="section" style="margin-top:6px">
-        <div class="row">
-          <div class="chip">HP: <span id="hpA">35</span></div>
-          <button class="btn" id="hpAMinus">-1</button>
-          <button class="btn" id="hpAPlus">+1</button>
-        </div>
-        <div class="row">
-          <div class="chip hide" id="statusA"></div>
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <select id="valA">
+      <div class="row" style="margin-top:6px">
+        <select id="valA" title="Card value">
           <option>2</option><option>3</option><option>4</option>
           <option selected>5</option><option>6</option><option>7</option>
           <option>8</option><option>9</option>
         </select>
-        <select id="suitA">
-          <option value="club">♣</option>
-          <option value="spade">♠</option>
-          <option value="heart">♥</option>
-          <option value="diamond" selected>♦</option>
+        <select id="suitA" title="Suit">
+          <option value="club">♣</option><option value="spade">♠</option>
+          <option value="heart">♥</option><option value="diamond" selected>♦</option>
         </select>
         <button class="btn" id="rollA">Roll d12</button>
-      </div>
-      <div class="row" style="margin-top:6px">
         <div class="chip mono" id="rollOutA">—</div>
         <div class="chip mono" id="resultA">—</div>
       </div>
     </div>
 
-    <!-- B -->
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div class="sub">Hero B</div>
-        <select id="classB">
-          <option>Knight</option>
-          <option selected>Mage</option>
-          <option>Assassin</option>
-          <option>Priest</option>
+    <div class="step">
+      <h2>Step 2 — Hero B acts</h2>
+      <div class="row">
+        <select id="classB" title="Class">
+          <option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option>
         </select>
+        <div class="chip">HP: <span id="hpB">30</span></div>
+        <button class="btn mini" id="hpBMinus">-1</button>
+        <button class="btn mini" id="hpBPlus">+1</button>
+        <div class="chip hide" id="statusB"></div>
       </div>
-      <div class="section" style="margin-top:6px">
-        <div class="row">
-          <div class="chip">HP: <span id="hpB">30</span></div>
-          <button class="btn" id="hpBMinus">-1</button>
-          <button class="btn" id="hpBPlus">+1</button>
-        </div>
-        <div class="row">
-          <div class="chip hide" id="statusB"></div>
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <select id="valB">
+      <div class="row" style="margin-top:6px">
+        <select id="valB" title="Card value">
           <option>2</option><option>3</option><option>4</option>
           <option selected>5</option><option>6</option><option>7</option>
           <option>8</option><option>9</option>
         </select>
-        <select id="suitB">
-          <option value="club">♣</option>
-          <option value="spade">♠</option>
-          <option value="heart">♥</option>
-          <option value="diamond" selected>♦</option>
+        <select id="suitB" title="Suit">
+          <option value="club">♣</option><option value="spade">♠</option>
+          <option value="heart">♥</option><option value="diamond" selected>♦</option>
         </select>
         <button class="btn" id="rollB">Roll d12</button>
-      </div>
-      <div class="row" style="margin-top:6px">
         <div class="chip mono" id="rollOutB">—</div>
         <div class="chip mono" id="resultB">—</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2>Step 3 — Boss ability (optional)</h2>
+      <div class="row">
+        <button class="btn" id="abilityBtn">Roll Ability (d12)</button>
+        <div class="chip mono" id="abilityOut">—</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2>Step 4 — Boss Turn → Next Round</h2>
+      <div class="row">
+        <select id="bossTarget" title="Who the boss hits">
+          <option value="AUTO" selected>Target: Auto (lowest HP)</option>
+          <option value="A">Target: Hero A</option>
+          <option value="B">Target: Hero B</option>
+        </select>
+        <button class="btn red" id="bossTurnBtn">Boss Turn → Next Round</button>
+        <div class="chip mono" id="roundOut">R1</div>
+      </div>
+    </div>
+
+    <!-- Royal picker at bottom -->
+    <div class="section">
+      <div class="sub" style="margin-bottom:6px">Change Royal</div>
+      <div class="row" id="bossButtons"></div>
+      <div class="sub muted" style="margin-top:6px">
+        J 8/2 (≤3 +2) • Q 14/4 (≤3 heal3) • K 18/5 (≤2 purge) • Joker 26/6 (8–10 ×2)
       </div>
     </div>
   </div>
@@ -191,9 +170,9 @@ const bosses = [
   {id:'king',  label:'K♣K♠K♥K♦', name:'Kings',  maxHP:18, atk:5},
   {id:'joker', label:'Jokers',   name:'Jokers', maxHP:26, atk:6},
 ];
-const DMG_PER_HIT = 5;             // nat-1 gives +1 (Mage +2)
-const BASE_PLAYS_PER_HERO = 1;     // plays are tracked silently; only shown if ♦ creates extras
-const BASE_DIAMOND_CAP = 2;        // Mage cap +1
+const DMG_PER_HIT = 5;             // nat-1 +1 (Mage +2)
+const BASE_PLAYS_PER_HERO = 1;     // ♦ can grant extras (cap 2, Mage cap 3)
+const BASE_DIAMOND_CAP = 2;
 const BASE_SHIELD = 3;             // Knight +1
 const BASE_HEAL = 3;               // Priest +1
 const BASE_POI = 1;                // Assassin +1
@@ -225,23 +204,18 @@ const healVal=h=>BASE_HEAL+(mods[h.cls]?.heal||0);
 const poiVal=h=>BASE_POI+(mods[h.cls]?.poi||0);
 function hero(which){return which==='A'?S.A:S.B}
 
-/* -------- Save/Load (lean) -------- */
+/* -------- Save/Load -------- */
 function save(){
-  const { ...lean } = S;
-  try{ localStorage.setItem('rc.simple.two', JSON.stringify(lean)); }catch{}
+  try{ localStorage.setItem('rc.turnflow.two', JSON.stringify(S)); }catch{}
 }
 function load(){
-  const raw = localStorage.getItem('rc.simple.two');
+  const raw = localStorage.getItem('rc.turnflow.two');
   if(!raw) return;
   try{
     const loaded = JSON.parse(raw);
     S = {...S, ...loaded};
-    // enforce current plays policy on load
-    ['A','B'].forEach(k=>{
-      S[k].plays = BASE_PLAYS_PER_HERO;
-      S[k].playsMax = BASE_PLAYS_PER_HERO;
-      S[k].diamond = 0;
-    });
+    // enforce 1-play policy on load
+    ['A','B'].forEach(k=>{ S[k].plays=BASE_PLAYS_PER_HERO; S[k].playsMax=BASE_PLAYS_PER_HERO; S[k].diamond=0; });
   }catch{}
 }
 
@@ -255,36 +229,28 @@ function render(){
   $('poiVal').textContent = S.boss.poison;
   $('roundOut').textContent = 'R'+S.boss.round;
 
-  // A
   $('hpA').textContent = S.A.hp;
-  updateStatusChip('A');
-  // B
   $('hpB').textContent = S.B.hp;
-  updateStatusChip('B');
+  updateStatus('A');
+  updateStatus('B');
 
   save();
 }
-function updateStatusChip(which){
+function updateStatus(which){
   const h = hero(which);
   const el = $('status'+which);
-  const parts=[];
-  if(h.shield>0) parts.push(`Shield ${h.shield}`);
-  if(h.playsMax>BASE_PLAYS_PER_HERO) parts.push(`Plays ${h.plays}/${h.playsMax}`);
-  el.textContent = parts.join(' • ');
-  el.classList.toggle('hide', parts.length===0);
+  const bits=[];
+  if(h.shield>0) bits.push(`Shield ${h.shield}`);
+  if(h.playsMax>BASE_PLAYS_PER_HERO) bits.push(`Plays ${h.plays}/${h.playsMax}`);
+  el.textContent = bits.join(' • ');
+  el.classList.toggle('hide', bits.length===0);
 }
 
 /* -------- Boss control -------- */
 function pickBoss(id){
   const b = bosses.find(x=>x.id===id);
   S.boss = { id:b.id, name:b.name, hp:b.maxHP, maxHP:b.maxHP, atk:b.atk, round:1, poison:0, jackPlus2:false, jokerTimes2:false };
-  // new round baseline for heroes
-  ['A','B'].forEach(k=>{
-    S[k].plays = BASE_PLAYS_PER_HERO;
-    S[k].playsMax = BASE_PLAYS_PER_HERO;
-    S[k].diamond = 0;
-    S[k].shield = 0;
-  });
+  ['A','B'].forEach(k=>{ S[k].plays=BASE_PLAYS_PER_HERO; S[k].playsMax=BASE_PLAYS_PER_HERO; S[k].diamond=0; S[k].shield=0; });
   render();
 }
 function bossAbility(){
@@ -305,22 +271,28 @@ function bossAbility(){
   render();
 }
 function bossTurn(){
-  // POI tick
+  // 1) POI tick (now that it's next to HP, this matches the visual)
   if(S.boss.poison>0){ S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP); }
-  // damage calc
+
+  // 2) Damage with ability flags
   let dmg = S.boss.atk;
   if(S.boss.id==='jack' && S.boss.jackPlus2) dmg+=2;
   if(S.boss.id==='joker' && S.boss.jokerTimes2) dmg*=2;
-  // target
+
+  // 3) Target
   const tgt = $('bossTarget').value;
   const h = (tgt==='AUTO') ? ((S.A.hp<=S.B.hp)?S.A:S.B) : (tgt==='A'?S.A:S.B);
+
+  // 4) Apply to target (shield only that hero)
   const reduced = Math.max(0, dmg - h.shield);
   h.shield = 0;
   h.hp = clamp(h.hp - reduced, 0, h.maxHP);
-  // next round
+
+  // 5) Next round setup
   S.boss.round += 1;
   S.boss.jackPlus2 = false; S.boss.jokerTimes2 = false;
   ['A','B'].forEach(k=>{ S[k].plays=BASE_PLAYS_PER_HERO; S[k].playsMax=BASE_PLAYS_PER_HERO; S[k].diamond=0; });
+
   $('abilityOut').textContent = `Boss dealt ${reduced} to ${h===S.A?'A':'B'}`;
   render();
 }
@@ -328,10 +300,10 @@ function bossTurn(){
 /* -------- Hero actions -------- */
 function classApply(which, cls){
   const h = hero(which);
-  const pct = h.hp / h.maxHP;
+  const pct = h.hp / h.maxHP || 1;
   h.cls = cls;
   h.maxHP = mods[cls]?.maxHP || 30;
-  h.hp = clamp(Math.round(h.maxHP*pct||h.maxHP),0,h.maxHP);
+  h.hp = clamp(Math.round(h.maxHP*pct),0,h.maxHP);
   render();
 }
 function spendPlay(h){
@@ -348,29 +320,30 @@ function grantDiamond(h){
   h.diamond += 1;
   render();
 }
-function hit(which){
+function heroRoll(which){
   const h = hero(which);
   const val = Number($(which==='A'?'valA':'valB').value);
   const suit = (which==='A'?$('suitA').value:$('suitB').value);
   const outR = $(which==='A'?'rollOutA':'rollOutB');
   const outT = $(which==='A'?'resultA':'resultB');
 
-  if(h.plays<=0){ outT.textContent = 'No actions'; return; }
+  if(h.plays<=0){ outT.textContent='No actions'; return; }
 
   const r = d12();
   outR.textContent = `d12: ${r}`;
 
+  // Fumble
   if(r===12){ spendPlay(h); h.hp = clamp(h.hp-1,0,h.maxHP); outT.textContent='Fumble (self-1)'; render(); return; }
+  // Miss
   if(r>val){  spendPlay(h); outT.textContent='Miss'; render(); return; }
 
-  // Hit!
+  // Hit
   if(!spendPlay(h)) return;
   let dmg = DMG_PER_HIT;
   if(r===1) dmg += lucky(h);
   S.boss.hp = clamp(S.boss.hp - dmg, 0, S.boss.maxHP);
 
   let tag = `Hit −${dmg}`;
-
   if(suit==='club'){ h.shield += shieldVal(h); tag += ` • ♣ Shield +${shieldVal(h)}`; }
   else if(suit==='heart'){ h.hp = clamp(h.hp + healVal(h), 0, h.maxHP); tag += ` • ♥ Heal +${healVal(h)}`; }
   else if(suit==='spade'){ S.boss.poison += poiVal(h); $('poiVal').textContent = S.boss.poison; tag += ` • ♠ POI +${poiVal(h)}`; }
@@ -380,7 +353,7 @@ function hit(which){
   render();
 }
 
-/* -------- UI wire -------- */
+/* -------- Wire-up -------- */
 function initBossButtons(){
   const c = $('bossButtons');
   bosses.forEach(b=>{
@@ -394,12 +367,14 @@ function initBossButtons(){
 function init(){
   load();
   if(!S.boss || !S.boss.maxHP){ pickBoss('jack'); }
-  // Boss
+
+  // Boss controls
   $('abilityBtn').addEventListener('click', bossAbility);
   $('bossTurnBtn').addEventListener('click', bossTurn);
   $('poiPlus').addEventListener('click', ()=>{ S.boss.poison+=1; render(); });
   $('poiMinus').addEventListener('click', ()=>{ S.boss.poison=Math.max(0,S.boss.poison-1); render(); });
   $('resetBoss').addEventListener('click', ()=>pickBoss(S.boss.id));
+
   // Heroes
   $('classA').addEventListener('change', e=>classApply('A', e.target.value));
   $('classB').addEventListener('change', e=>classApply('B', e.target.value));
@@ -407,11 +382,17 @@ function init(){
   $('hpAPlus').addEventListener('click',  ()=>{ S.A.hp=clamp(S.A.hp+1,0,S.A.maxHP); render(); });
   $('hpBMinus').addEventListener('click', ()=>{ S.B.hp=clamp(S.B.hp-1,0,S.B.maxHP); render(); });
   $('hpBPlus').addEventListener('click',  ()=>{ S.B.hp=clamp(S.B.hp+1,0,S.B.maxHP); render(); });
-  $('rollA').addEventListener('click', ()=>hit('A'));
-  $('rollB').addEventListener('click', ()=>hit('B'));
+  $('rollA').addEventListener('click', ()=>heroRoll('A'));
+  $('rollB').addEventListener('click', ()=>heroRoll('B'));
+
   // Footer
-  $('perfModeChk').addEventListener('change', e=>{ S.perf=!!e.target.checked; document.documentElement.classList.toggle('perf', S.perf); save(); });
-  $('clearSaveBtn').addEventListener('click', ()=>{ try{localStorage.removeItem('rc.simple.two')}catch{} location.reload(); });
+  $('perfModeChk').addEventListener('change', e=>{
+    const on = !!e.target.checked;
+    S.perf = on;
+    document.documentElement.classList.toggle('perf', on);
+    save();
+  });
+  $('clearSaveBtn').addEventListener('click', ()=>{ try{localStorage.removeItem('rc.turnflow.two')}catch{} location.reload(); });
 
   initBossButtons();
   render();
