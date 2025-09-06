@@ -64,6 +64,7 @@
   .log{margin-top:8px; font-size:12px; color:#cfe3ff; opacity:.95}
   .log .line{padding:4px 0; border-bottom:1px dashed #2a3142}
   .pill{border-radius:999px; padding:2px 8px; font-size:11px; border:1px solid #2b3244; background:#111825; color:#d9e6ff}
+  .suits{font-weight:700; letter-spacing:.5px; opacity:.9}
 </style>
 </head>
 <body>
@@ -108,10 +109,13 @@
     <!-- HERO A -->
     <div class="card">
       <div class="row between">
-        <div class="row" style="gap:8px;align-items:center">
-          <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
-          <div class="chip">HP <span id="hpA">35</span></div>
-          <span class="pill" id="assistChipA" title="Pending bonus to A's next roll" style="display:none">Assist +0</span>
+        <div>
+          <div class="row" style="gap:8px;align-items:center">
+            <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
+            <div class="suits" id="suitsA"></div>
+            <div class="chip">HP <span id="hpA">35</span></div>
+            <span class="pill" id="assistChipA" title="Pending bonus to A's next roll" style="display:none">Assist +0</span>
+          </div>
         </div>
         <div class="row" style="gap:6px">
           <button class="btn mini gray" id="hpAMinus">−1</button>
@@ -139,10 +143,13 @@
     <!-- HERO B -->
     <div class="card">
       <div class="row between">
-        <div class="row" style="gap:8px;align-items:center">
-          <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
-          <div class="chip">HP <span id="hpB">30</span></div>
-          <span class="pill" id="assistChipB" title="Pending bonus to B's next roll" style="display:none">Assist +0</span>
+        <div>
+          <div class="row" style="gap:8px;align-items:center">
+            <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
+            <div class="suits" id="suitsB"></div>
+            <div class="chip">HP <span id="hpB">30</span></div>
+            <span class="pill" id="assistChipB" title="Pending bonus to B's next roll" style="display:none">Assist +0</span>
+          </div>
         </div>
         <div class="row" style="gap:6px">
           <button class="btn mini gray" id="hpBMinus">−1</button>
@@ -186,7 +193,10 @@
       <h3 id="rewTitle">Royal Defeated — Rewards</h3>
       <button class="btn" id="closeRewards">Close</button>
     </div>
-    <div class="sub" id="rewContext">Each hero: auto-add upgrade card (J→6, Q→7, K→8, Joker→9). If your class suits match the Royal’s suit, you may also add the Legendary face card; otherwise pick a Generic (one-time). Damage/Poison carry over; heals/shields apply now.</div>
+    <div class="sub" id="rewContext">
+      Each hero auto-adds: J→6, Q→7, K→8, Joker→9 (to discard).<br/>
+      Legendary face card: <b>only</b> the hero who dealt the final blow with a <b>matching suit</b> may add that face to deck. (No Legendary on Jokers or poison kills.)
+    </div>
     <div class="grid2" style="margin-top:10px">
       <div class="list">
         <div class="sub" style="margin-bottom:6px">Hero A choices</div>
@@ -229,7 +239,7 @@ const DMG_PER_HIT=5, BASE_PLAYS=1, BASE_DIAMOND_CAP=2, BASE_SHIELD=3, BASE_HEAL=
 const SUITS=['♣','♠','♥','♦'], VALUES=[2,3,4,5,6,7,8,9];
 const ASSIST_CAP=3; // max +3 to partner's next roll
 
-/* Classes */
+/* Classes (and their suit tags for display) */
 const classMods={
   Knight:{maxHP:35,diamondCap:0,lucky:0,shield:1,heal:0,poi:0,suits:['♣','♥']},
   Mage:{  maxHP:30,diamondCap:1,lucky:1,shield:0,heal:0,poi:0,suits:['♦','♠']},
@@ -237,12 +247,49 @@ const classMods={
   Priest:{maxHP:35,diamondCap:0,lucky:0,heal:1,shield:0,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects (Guard only—no IMM) */
+/* ====== BUFFED LEGENDARIES (drastically stronger) ======
+Knight:  J♣: deal 10  | Q♣: +1 play & Guard +3 | K♣: deal ceil(½ bossHP)+6
+         J♥: heal team 6 | Q♥: heal team 5 | K♥: Guard +5
+Mage:    J♦: deal 5 + heal 2 | Q♦: deal 7 | K♦: deal 12 + poison 6
+         J♠: poison 5 | Q♠: Guard +5 | K♠: deal 4 + poison 4
+Assassin:J♣: deal 4 + poison 2 | Q♣: deal 4 + poison 2 | K♣: deal 14
+         J♠: poison 3 | Q♠: Guard +5 | K♠: poison 4
+Priest:  J♥: heal 4 + deal 5 | Q♥: heal 6 + deal 4 | K♥: set lowest HP to ⅔ max (revive)
+         J♦: deal 4 | Q♦: deal 2 + heal 2 | K♦: deal 8 + poison 3 + heal 4
+======================================================== */
 const legendaryEffects={
-  Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
-  Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
-  Assassin:{'J♣':h=>{deal(2);addPoison(1);},'Q♣':h=>{deal(2);addPoison(1);},'K♣':h=>deal(9),'J♠':h=>addPoison(1),'Q♠':h=>shield(3,h),'K♠':h=>addPoison(1)},
-  Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
+  Knight:{
+    'J♣':h=>dealWithCtx(10,h,null),
+    'Q♣':h=>{addPlay(h); shield(3,h);},
+    'K♣':h=>dealWithCtx(Math.ceil(currBoss().maxHP/2)+6,h,null),
+    'J♥':h=>teamHeal(6),
+    'Q♥':h=>teamHeal(5),
+    'K♥':h=>shield(5,h),
+  },
+  Mage:{
+    'J♦':h=>{dealWithCtx(5,h,'♦'); teamHeal(2);},
+    'Q♦':h=>dealWithCtx(7,h,'♦'),
+    'K♦':h=>{dealWithCtx(12,h,'♦'); addPoison(6);},
+    'J♠':h=>addPoison(5),
+    'Q♠':h=>shield(5,h),
+    'K♠':h=>{dealWithCtx(4,h,'♠'); addPoison(4);},
+  },
+  Assassin:{
+    'J♣':h=>{dealWithCtx(4,h,'♣'); addPoison(2);},
+    'Q♣':h=>{dealWithCtx(4,h,'♣'); addPoison(2);},
+    'K♣':h=>dealWithCtx(14,h,'♣'),
+    'J♠':h=>addPoison(3),
+    'Q♠':h=>shield(5,h),
+    'K♠':h=>addPoison(4),
+  },
+  Priest:{
+    'J♥':h=>{teamHeal(4); dealWithCtx(5,h,'♥');},
+    'Q♥':h=>{teamHeal(6); dealWithCtx(4,h,'♥');},
+    'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP*2/3)); low.down=false;},
+    'J♦':h=>dealWithCtx(4,h,'♦'),
+    'Q♦':h=>{dealWithCtx(2,h,'♦'); teamHeal(2);},
+    'K♦':h=>{dealWithCtx(8,h,'♦'); addPoison(3); teamHeal(4);},
+  },
 };
 
 /* Generics by defeated rank — Guard +2 (no IMM), EVERY generic also trashes 1 lowest */
@@ -280,10 +327,11 @@ let S={
   A:makeHero('Knight'),
   B:makeHero('Mage'),
   selA:null, selB:null,
-  link:null // (unused for now, reserved)
+  lastFinisher:null // {who:'A'|'B', suit:'♣'|'♥'|'♠'|'♦', matched:true|false}
 };
 let carry={damage:0,poison:0};
 let lastBossTarget = null; // for A↔B alternation
+let damageCtx=null; // {who:'A'|'B', suit:'♣'|'♥'|'♠'|'♦'|null}
 
 /* =================== Helpers =================== */
 const $=id=>document.getElementById(id);
@@ -378,6 +426,11 @@ function renderAssistChips(){
   if(a>0){ chipA.style.display='inline-block'; chipA.textContent=`Assist +${a}`; } else { chipA.style.display='none'; }
   if(b>0){ chipB.style.display='inline-block'; chipB.textContent=`Assist +${b}`; } else { chipB.style.display='none'; }
 }
+function renderSuits(){
+  const sa=classMods[S.A.cls].suits.join(' '), sb=classMods[S.B.cls].suits.join(' ');
+  $('suitsA').textContent = `(${sa})`;
+  $('suitsB').textContent = `(${sb})`;
+}
 function render(){
   $('bossName').textContent = `${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
   $('bossStats').textContent = `HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
@@ -389,7 +442,7 @@ function render(){
 
   renderHero('A'); renderHero('B');
   $('playsA').textContent = S.A.plays; $('playsB').textContent = S.B.plays;
-  renderAssistChips();
+  renderAssistChips(); renderSuits();
   save();
 }
 function renderHero(w){
@@ -414,6 +467,9 @@ function setBossByIndex(i){
   S.gauntletIndex = i;
   const card = S.gauntlet[i], def=bossDefs[card.rank];
   S.boss={rank:card.rank,suit:card.suit,name:def.name,hp:def.maxHP,maxHP:def.maxHP,atk:def.atk,round:1,poison:0,jackPlus2:false,jokerTimes2:false};
+
+  // reset finisher
+  S.lastFinisher=null;
 
   // carry-over
   if(carry.damage>0){ S.boss.hp = Math.max(0,S.boss.hp - carry.damage); }
@@ -496,24 +552,37 @@ function startNextRound(){
 
 /* Auto-phase driver */
 function doBossPhase(){
-  // Poison tick
+  // Poison tick (poison kills do NOT grant Legendary)
   if(S.boss.poison>0){
     const before=S.boss.hp;
     S.boss.hp = clamp(S.boss.hp - S.boss.poison, 0, S.boss.maxHP);
     renderBossBar();
     if(before!==S.boss.hp){ const t=before-S.boss.hp; toast(`Poison ticks for ${t}`,'good'); logLine(`Poison: −${t} HP`); }
-    if(S.boss.hp<=0){ onBossDefeated('by Poison'); return; }
+    if(S.boss.hp<=0){ onBossDefeated('by Poison', /*legendaryEligible=*/false); return; }
   }
   // Ability + Attack
   const abilityMsg=bossAbilityResolve(); render(); logLine(`Ability → ${abilityMsg}`); toast(`Royal ability: ${abilityMsg}`);
   const attackMsg=bossAttackResolve(); render(); logLine(`Attack → ${attackMsg}`); toast(`Royal attack: ${attackMsg}`);
 
-  if(S.boss.hp<=0){ onBossDefeated('defeated'); return; }
+  if(S.boss.hp<=0){ onBossDefeated('defeated', false); return; }
   startNextRound();
 }
 
 /* =================== Effects & Rewards =================== */
-function deal(n){ if(S.boss.hp>0){ S.boss.hp=Math.max(0,S.boss.hp-n); renderBossBar(); } else { carry.damage+=n; } }
+function deal(n){ // generic deal (no finisher tracking)
+  if(S.boss.hp>0){ S.boss.hp=Math.max(0,S.boss.hp-n); renderBossBar(); }
+  else { carry.damage+=n; }
+}
+function dealWithCtx(n, actorHero, suitOrNull){ // tracks finishing blow info
+  // set a one-shot context so if this damage kills, we know who/suit
+  damageCtx = {who: (actorHero===S.A)?'A':'B', suit: suitOrNull};
+  deal(n);
+  if(S.boss.hp<=0 && damageCtx){
+    const matched = (S.boss.rank!=='X') && (damageCtx.suit===S.boss.suit);
+    S.lastFinisher = {who:damageCtx.who, suit:damageCtx.suit, matched};
+  }
+  damageCtx = null;
+}
 function shield(n,h){ h.shield=(h.shield||0)+n }
 function addPlay(h){ const cap=capPlays(h); if(h.playsMax<BASE_PLAYS+cap){h.plays+=1;h.playsMax+=1} }
 function addPoison(n){ if(S.boss.hp>0){ S.boss.poison+=n; } else { carry.poison+=n; } }
@@ -535,7 +604,14 @@ function playSelected(w){
     outR.textContent=`FACE ${key}`;
     if(typeof eff==='function'){ eff(h); outT.textContent='Legendary played'; }
     else { outT.textContent='Legendary (no effect configured)'; }
-    h.plays-=1; if(S.boss.hp<=0){ onBossDefeated('by damage'); return; }
+    h.plays-=1;
+    if(S.boss.hp<=0){
+      // if Legendary killed, only eligible if its suit matches the boss suit (Jokers excluded)
+      const matched = (S.boss.rank!=='X') && (card.s===S.boss.suit);
+      S.lastFinisher = {who:w, suit:card.s, matched};
+      onBossDefeated('by damage', matched);
+      return;
+    }
     render();
     maybeDoBossPhase();
     return;
@@ -554,7 +630,9 @@ function playSelected(w){
   if(r>card.v){ h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); maybeDoBossPhase(); return; }
 
   h.plays-=1;
-  let dmg=DMG_PER_HIT; if(r===1)dmg+=lucky(h); deal(dmg);
+  let dmg=DMG_PER_HIT; if(r===1)dmg+=lucky(h);
+  // track finishing-blow context: number card has suit = card.s
+  dealWithCtx(dmg, h, card.s);
   let tag=`Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){ shield(shieldVal(h),h); tag+=` • ♣ Guard +${shieldVal(h)}`; }
   else if(card.s==='♥'){ teamHeal(healVal(h)); tag+=` • ♥ Heal lowest +${healVal(h)}`; }
@@ -562,7 +640,7 @@ function playSelected(w){
   else if(card.s==='♦'){ addPlay(h); tag+=' • ♦ +1 play'; }
   outT.textContent=tag;
 
-  if(S.boss.hp<=0){ onBossDefeated('by damage'); return; }
+  if(S.boss.hp<=0){ onBossDefeated('by damage', S.lastFinisher?.matched); return; }
   render(); maybeDoBossPhase();
 }
 
@@ -649,33 +727,38 @@ function addUpgradeCardToHero(h, rank, suit){
 }
 
 /* Rewards flow */
-function onBossDefeated(reason='defeated'){
+function onBossDefeated(reason='defeated', legendaryEligible=false){
   toast(`Royal ${reason} — rewards ready.`, 'good');
+
   // auto add upgrades (both heroes)
   addUpgradeCardToHero(S.A, S.boss.rank, S.boss.suit);
   addUpgradeCardToHero(S.B, S.boss.rank, S.boss.suit);
-  openRewards();
+
+  // open modal with per-hero options based on finisher + suit match
+  openRewards(legendaryEligible===true);
 }
-function openRewards(){
-  buildChoices('A'); buildChoices('B');
+function openRewards(forceEligible){
+  buildChoices('A',forceEligible);
+  buildChoices('B',forceEligible);
   $('rewardsOverlay').classList.add('show');
 }
 function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
 
-function buildChoices(w){
+function buildChoices(w, forceEligible){
   const holder=$('choices'+w); holder.innerHTML='';
   const h=S[w], b=S.boss;
-  const suitOK = b.rank!=='X' && classMods[h.cls].suits.includes(b.suit);
 
-  // Legendary option if suit matches
-  if(suitOK){
+  // Legendary eligibility: only if this hero landed the finishing blow AND card suit matched boss suit (and not Joker)
+  const isFinisher = S.lastFinisher && S.lastFinisher.who===w && S.lastFinisher.matched===true && b.rank!=='X';
+  if(isFinisher || forceEligible){
     const key=`${b.rank}${b.suit}`;
     const btn=document.createElement('button');
     btn.className='btn green'; btn.textContent=`Add ${key} to deck (Legendary)`;
     btn.onclick=()=>{ h.discard.push({type:'face',rank:b.rank,s:b.suit}); btn.disabled=true; btn.textContent='Added'; toast(`Hero ${w}: +${key}`,'good'); };
     holder.appendChild(btn);
     const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
-    info.textContent='Legendaries play automatically (no roll) when drawn.'; holder.appendChild(info);
+    info.textContent='Legendaries are one-shot power plays (no roll), now significantly stronger.';
+    holder.appendChild(info);
   } else {
     // GENERICS limited to rank of defeated face — and ALWAYS trash 1 additional lowest
     const keys = GENERIC_BY_RANK[b.rank] || [];
