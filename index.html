@@ -27,7 +27,7 @@
   .btn:active{transform:translateY(1px)}
   .btn.gray{background:#141922;border-color:#252c3c}
   .btn.green{background:#13301f;border-color:#1b3e29}
-  .btn.red{background:#2a1215;border-color:#3a1a1e}
+  .btn.red{background:#2a1215;border-color:#3a1e23}
   .mini{padding:2px 8px;font-size:11px}
 
   .chip{background:var(--chip);border:1px solid var(--chipline);border-radius:999px;padding:4px 8px;font-size:12px;color:#e8f1ff}
@@ -63,6 +63,7 @@
   .bossHead{display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center}
   .log{margin-top:8px; font-size:12px; color:#cfe3ff; opacity:.95}
   .log .line{padding:4px 0; border-bottom:1px dashed #2a3142}
+  .pill{border-radius:999px; padding:2px 8px; font-size:11px; border:1px solid #2b3244; background:#111825; color:#d9e6ff}
 </style>
 </head>
 <body>
@@ -110,9 +111,9 @@
         <div class="row" style="gap:8px;align-items:center">
           <select id="classA"><option>Knight</option><option>Mage</option><option>Assassin</option><option>Priest</option></select>
           <div class="chip">HP <span id="hpA">35</span></div>
+          <span class="pill" id="assistChipA" title="Pending bonus to A's next roll" style="display:none">Assist +0</span>
         </div>
         <div class="row" style="gap:6px">
-          <button class="btn mini" id="forfeitA">Forfeit & Redraw</button>
           <button class="btn mini gray" id="hpAMinus">−1</button>
           <button class="btn mini gray" id="hpAPlus">+1</button>
         </div>
@@ -129,6 +130,7 @@
 
       <div class="row" style="margin-top:6px">
         <button class="btn" id="rollA" style="flex:1">Play Selected & Roll d12</button>
+        <button class="btn gray" id="assistA">Assist Partner</button>
         <div class="chip" id="rollOutA">—</div>
         <div class="chip" id="resultA">—</div>
       </div>
@@ -140,9 +142,9 @@
         <div class="row" style="gap:8px;align-items:center">
           <select id="classB"><option>Knight</option><option selected>Mage</option><option>Assassin</option><option>Priest</option></select>
           <div class="chip">HP <span id="hpB">30</span></div>
+          <span class="pill" id="assistChipB" title="Pending bonus to B's next roll" style="display:none">Assist +0</span>
         </div>
         <div class="row" style="gap:6px">
-          <button class="btn mini" id="forfeitB">Forfeit & Redraw</button>
           <button class="btn mini gray" id="hpBMinus">−1</button>
           <button class="btn mini gray" id="hpBPlus">+1</button>
         </div>
@@ -159,6 +161,7 @@
 
       <div class="row" style="margin-top:6px">
         <button class="btn" id="rollB" style="flex:1">Play Selected & Roll d12</button>
+        <button class="btn gray" id="assistB">Assist Partner</button>
         <div class="chip" id="rollOutB">—</div>
         <div class="chip" id="resultB">—</div>
       </div>
@@ -201,11 +204,30 @@
   </div>
 </div>
 
+<!-- Assist Modal -->
+<div class="overlay" id="assistOverlay" role="dialog" aria-modal="true" aria-labelledby="assistTitle">
+  <div class="modal">
+    <div class="row between" style="margin-bottom:8px">
+      <h3 id="assistTitle">Assist Partner — Sacrifice Cards</h3>
+      <button class="btn" id="assistClose">Close</button>
+    </div>
+    <div class="sub" id="assistHint">Select any number of cards to discard. Partner gains +1 to next d12 per card (max +3). Costs 1 play.</div>
+    <div class="list" style="margin-top:10px">
+      <div class="hand" id="assistPickZone"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn green" id="assistConfirm">Confirm Assist</button>
+      <div class="chip" id="assistSummary">0 selected → +0 to partner</div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =================== Core Data =================== */
 const bossDefs={J:{name:'Jacks',maxHP:8,atk:2},Q:{name:'Queens',maxHP:14,atk:4},K:{name:'Kings',maxHP:18,atk:5},X:{name:'Jokers',maxHP:26,atk:6}};
 const DMG_PER_HIT=5, BASE_PLAYS=1, BASE_DIAMOND_CAP=2, BASE_SHIELD=3, BASE_HEAL=3, BASE_POI=1;
 const SUITS=['♣','♠','♥','♦'], VALUES=[2,3,4,5,6,7,8,9];
+const ASSIST_CAP=3; // max +3 to partner's next roll
 
 /* Classes */
 const classMods={
@@ -223,7 +245,7 @@ const legendaryEffects={
   Priest:{'J♥':h=>{teamHeal(2);deal(3);},'Q♥':h=>{teamHeal(3);deal(3);},'K♥':h=>{const low=getLowestHero(); low.hp=Math.max(low.hp,Math.ceil(low.maxHP/2)); low.down=false;},'J♦':h=>deal(2),'Q♦':h=>{deal(1);teamHeal(1);},'K♦':h=>{deal(5);addPoison(2);teamHeal(2);}},
 };
 
-/* Generics by defeated rank — Parry/Ward now Guard +2, and EVERY generic also trashes 1 lowest */
+/* Generics by defeated rank — Guard +2 (no IMM), EVERY generic also trashes 1 lowest */
 const GENERICS_ALL={
   training:{id:'training',label:'Training · +1⚔ +1♥',run:(h)=>{deal(1);teamHeal(1)}},
   sprint:{id:'sprint',label:'Sprint · +2⚔, team −1',run:(h)=>{deal(2);teamHurt(1)}},
@@ -257,11 +279,11 @@ let S={
   boss:{rank:'J',suit:'♦',name:'Jacks',hp:8,maxHP:8,atk:2,round:1,poison:0,jackPlus2:false,jokerTimes2:false},
   A:makeHero('Knight'),
   B:makeHero('Mage'),
-  selA:null, selB:null
+  selA:null, selB:null,
+  link:null // (unused for now, reserved)
 };
 let carry={damage:0,poison:0};
-// Track who the boss hit last for alternation
-let lastBossTarget = null;
+let lastBossTarget = null; // for A↔B alternation
 
 /* =================== Helpers =================== */
 const $=id=>document.getElementById(id);
@@ -273,6 +295,7 @@ const capPlays=h=>BASE_DIAMOND_CAP+(classMods[h.cls].diamondCap||0);
 const shieldVal=h=>BASE_SHIELD+(classMods[h.cls].shield||0);
 const healVal=h=>BASE_HEAL+(classMods[h.cls].heal||0);
 const poiVal=h=>BASE_POI+(classMods[h.cls].poi||0);
+const partnerKey = (w)=> w==='A' ? 'B' : 'A';
 
 function toast(msg,kind='info'){
   const d=document.createElement('div'); d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':'');
@@ -296,6 +319,7 @@ function load(){
       if(!Array.isArray(h.discard)) h.discard=[];
       if(!Array.isArray(h.hand)) h.hand=[];
       h.plays=BASE_PLAYS; h.playsMax=BASE_PLAYS; h.diamond=0;
+      h.nextRollBonus = 0;
     });
   }catch{}
 }
@@ -303,7 +327,7 @@ function load(){
 /* =================== Heroes & Decks =================== */
 function makeHero(cls){
   const m=classMods[cls];
-  return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:BASE_PLAYS,playsMax:BASE_PLAYS,diamond:0,shield:0,down:false,deck:startDeck(),discard:[],hand:[]};
+  return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:BASE_PLAYS,playsMax:BASE_PLAYS,diamond:0,shield:0,down:false,deck:startDeck(),discard:[],hand:[],nextRollBonus:0};
 }
 function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s}))); return shuffle(d); }
 function drawOne(w){
@@ -348,6 +372,12 @@ function renderBossBar(){
   $('hpNow').textContent = S.boss.hp;
   $('hpMax').textContent = S.boss.maxHP;
 }
+function renderAssistChips(){
+  const a=S.A.nextRollBonus||0, b=S.B.nextRollBonus||0;
+  const chipA=$('assistChipA'), chipB=$('assistChipB');
+  if(a>0){ chipA.style.display='inline-block'; chipA.textContent=`Assist +${a}`; } else { chipA.style.display='none'; }
+  if(b>0){ chipB.style.display='inline-block'; chipB.textContent=`Assist +${b}`; } else { chipB.style.display='none'; }
+}
 function render(){
   $('bossName').textContent = `${S.boss.name} (${S.boss.rank}${S.boss.rank==='X'?'':S.boss.suit})`;
   $('bossStats').textContent = `HP ${S.boss.hp}/${S.boss.maxHP} • DMG ${S.boss.atk}`;
@@ -359,6 +389,7 @@ function render(){
 
   renderHero('A'); renderHero('B');
   $('playsA').textContent = S.A.plays; $('playsB').textContent = S.B.plays;
+  renderAssistChips();
   save();
 }
 function renderHero(w){
@@ -487,7 +518,7 @@ function shield(n,h){ h.shield=(h.shield||0)+n }
 function addPlay(h){ const cap=capPlays(h); if(h.playsMax<BASE_PLAYS+cap){h.plays+=1;h.playsMax+=1} }
 function addPoison(n){ if(S.boss.hp>0){ S.boss.poison+=n; } else { carry.poison+=n; } }
 
-/* Play card or forfeit */
+/* Play card (uses partner's pending Assist if any) */
 function playSelected(w){
   const h=S[w]; if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
   if(h.plays<=0){toast(`Hero ${w} has no plays.`,'bad');return}
@@ -510,9 +541,14 @@ function playSelected(w){
     return;
   }
 
-  // Number card: roll to hit
-  const r=d12(); outR.textContent=`d12: ${r}`;
-  if(r===12){
+  // Number card: roll to hit (apply pending assist)
+  const raw=d12();
+  const bonus = h.nextRollBonus||0;
+  const r = Math.min(11, raw + bonus); // never turns into 12 fumble
+  h.nextRollBonus = 0; // consume assist regardless of result
+
+  outR.textContent=`d12: ${raw}${bonus?` (+${bonus}) = ${r}`:''}`;
+  if(r===12){ // unreachable due to min(11,...) but keep for safety
     h.plays-=1; teamHurt(1); outT.textContent='Fumble (lowest living hero −1)'; render(); maybeDoBossPhase(); return;
   }
   if(r>card.v){ h.plays-=1; outT.textContent=`Miss (${card.v}${card.s})`; render(); maybeDoBossPhase(); return; }
@@ -520,7 +556,7 @@ function playSelected(w){
   h.plays-=1;
   let dmg=DMG_PER_HIT; if(r===1)dmg+=lucky(h); deal(dmg);
   let tag=`Hit −${dmg} with ${card.v}${card.s}`;
-  if(card.s==='♣'){ shield(shieldVal(h),h); tag+=` • ♣ Shield +${shieldVal(h)}`; }
+  if(card.s==='♣'){ shield(shieldVal(h),h); tag+=` • ♣ Guard +${shieldVal(h)}`; }
   else if(card.s==='♥'){ teamHeal(healVal(h)); tag+=` • ♥ Heal lowest +${healVal(h)}`; }
   else if(card.s==='♠'){ addPoison(poiVal(h)); tag+=` • ♠ POI +${poiVal(h)}`; }
   else if(card.s==='♦'){ addPlay(h); tag+=' • ♦ +1 play'; }
@@ -529,12 +565,63 @@ function playSelected(w){
   if(S.boss.hp<=0){ onBossDefeated('by damage'); return; }
   render(); maybeDoBossPhase();
 }
-function forfeitAndRedraw(w){
-  const h=S[w];
-  if(h.down){toast(`Hero ${w} is defeated.`,'bad');return}
-  if(h.plays<=0){toast(`Hero ${w} already spent plays.`,'bad');return}
-  discardHand(w); drawUp(w); h.plays=0; h.playsMax=Math.max(h.playsMax,BASE_PLAYS);
-  toast(`Hero ${w} forfeits and redraws.`,'good'); render(); maybeDoBossPhase();
+
+/* Assist: sacrifice any number of cards to boost partner's next roll */
+let assistFrom = null;
+let assistSelected = new Set();
+
+function openAssist(w){
+  assistFrom = w;
+  assistSelected = new Set();
+  $('assistTitle').textContent = `Assist Partner — Hero ${w}`;
+  $('assistOverlay').classList.add('show');
+  renderAssistPicker();
+  updateAssistSummary();
+}
+function closeAssist(){ $('assistOverlay').classList.remove('show'); assistFrom=null; assistSelected.clear(); }
+
+function renderAssistPicker(){
+  const zone=$('assistPickZone'); zone.innerHTML='';
+  const h=S[assistFrom];
+  h.hand.forEach((c,idx)=>{
+    const el=document.createElement('div');
+    el.className='cardlet'+(assistSelected.has(idx)?' sel':'');
+    el.textContent = c.type==='num' ? `${c.v}${c.s}` : `${c.rank}${c.s}`;
+    el.onclick=()=>{ if(assistSelected.has(idx)) assistSelected.delete(idx); else assistSelected.add(idx); renderAssistPicker(); updateAssistSummary(); };
+    zone.appendChild(el);
+  });
+}
+function updateAssistSummary(){
+  const count = assistSelected.size;
+  const bonus = Math.min(ASSIST_CAP, count);
+  $('assistSummary').textContent = `${count} selected → +${bonus} to partner`;
+}
+
+function confirmAssist(){
+  if(!assistFrom) return;
+  const h=S[assistFrom];
+  if(h.down){ toast(`Hero ${assistFrom} is defeated.`, 'bad'); return; }
+  if(h.plays<=0){ toast(`Hero ${assistFrom} has no plays.`, 'bad'); return; }
+
+  const count = assistSelected.size;
+  if(count===0){ toast('Select at least 1 card to assist.', 'bad'); return; }
+
+  // Move selected cards to discard (not trash)
+  const indices = Array.from(assistSelected).sort((a,b)=>b-a); // remove high->low
+  indices.forEach(i=>{ h.discard.push(h.hand[i]); h.hand.splice(i,1); });
+
+  // Spend 1 play and grant partner bonus
+  h.plays -= 1;
+  const partner = partnerKey(assistFrom);
+  const bonus = Math.min(ASSIST_CAP, count);
+  S[partner].nextRollBonus = Math.min(ASSIST_CAP, (S[partner].nextRollBonus||0) + bonus);
+
+  toast(`Hero ${assistFrom} assists ${partner}: +${bonus} to next roll`, 'good');
+  logLine(`Assist: ${assistFrom} sacrificed ${count} card(s) → ${partner} +${bonus} next d12`);
+
+  closeAssist();
+  render();
+  maybeDoBossPhase();
 }
 
 /* After every hero action, check if boss should act */
@@ -552,12 +639,10 @@ function autoTrashLowest(h,n=1){
 
 /* Auto add upgrade 6/7/8/9 to each hero when a royal dies */
 function addUpgradeCardToHero(h, rank, suit){
-  const map={J:6,Q:7,K:8,X:9}; // UPDATED
+  const map={J:6,Q:7,K:8,X:9};
   let v = map[rank];
   let s = suit;
-  if(rank==='X'){ // Joker: random suit
-    s = SUITS[Math.floor(Math.random()*SUITS.length)];
-  }
+  if(rank==='X'){ s = SUITS[Math.floor(Math.random()*SUITS.length)]; }
   const card={type:'num', v, s};
   h.discard.push(card);
   toast(`${h===S.A?'Hero A':'Hero B'}: +${v}${s} (upgrade)`, 'good');
@@ -627,8 +712,12 @@ function init(){
 
   $('rollA').onclick=()=>playSelected('A');
   $('rollB').onclick=()=>playSelected('B');
-  $('forfeitA').onclick=()=>forfeitAndRedraw('A');
-  $('forfeitB').onclick=()=>forfeitAndRedraw('B');
+
+  // Assist buttons
+  $('assistA').onclick=()=>openAssist('A');
+  $('assistB').onclick=()=>openAssist('B');
+  $('assistClose').onclick=closeAssist;
+  $('assistConfirm').onclick=confirmAssist;
 
   if(S.A.hand.length===0) drawUp('A');
   if(S.B.hand.length===0) drawUp('B');
