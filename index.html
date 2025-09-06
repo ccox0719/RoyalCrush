@@ -180,8 +180,8 @@
     </div>
     <div class="sub" id="rewHint">
       Each hero auto-adds: J→6, Q→7, K→8, Joker→9 (to discard).<br/>
-      <b>Legendary:</b> On a hit kill, the finisher gets it if their <b>class suits</b> include the Royal’s suit.
-      On a poison kill, <b>either hero</b> may claim (one total). Jokers grant no Legendary.
+      <b>Legendary:</b> Hit kill → finisher gets it if their class is mapped to that exact Royal. 
+      Poison kill → either hero may claim (one total). Jokers never grant a Legendary.
     </div>
     <div class="grid2" style="margin-top:10px">
       <div class="list">
@@ -229,6 +229,15 @@ const classMods={
   Assassin:{maxHP:30,diamondCap:0,lucky:0,shield:0,heal:0,poi:1,suits:['♣','♠']},
   Priest:{maxHP:35,diamondCap:0,lucky:0,heal:1,shield:0,poi:0,suits:['♥','♦']},
 };
+
+/* Simple eligibility map: exactly which rank+suit a class can claim on a hit kill */
+const ELIGIBLE = {
+  Knight:  new Set(['J♣','Q♣','K♣','J♥','Q♥','K♥']),
+  Mage:    new Set(['J♦','Q♦','K♦','J♠','Q♠','K♠']),
+  Assassin:new Set(['J♣','Q♣','K♣','J♠','Q♠','K♠']),
+  Priest:  new Set(['J♥','Q♥','K♥','J♦','Q♦','K♦']),
+};
+
 /* Legendaries & Generics */
 const legendaryEffects={
   Knight:{'J♣':h=>applyDamage({amount:6,by:keyOf(h),tag:'legendary'}),'Q♣':h=>addPlay(h),'K♣':h=>applyDamage({amount:Math.ceil(currBoss().max/3)+4,by:keyOf(h),tag:'legendary'}),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
@@ -350,11 +359,11 @@ function bossPhase(){
     const pre=S.boss.hp;
     applyDamage({amount:S.boss.poi, by:null, tag:'poison'});
     if(pre!==S.boss.hp){ const t=pre-S.boss.hp; toast(`Poison ticks for ${t}`,'good'); logLine(`Poison: −${t} HP`); }
-    if(S.boss.hp<=0) return; // onBossDefeated already fired in applyDamage
+    if(S.boss.hp<=0) return; // onBossDefeated already fired
   }
   const a=bossAbility(); logLine(`Ability → ${a}`); toast(`Royal ability: ${a}`);
   const atk=bossAttack(); logLine(`Attack → ${atk}`); toast(`Royal attack: ${atk}`);
-  if(S.boss.hp<=0) return; // safety
+  if(S.boss.hp<=0) return;
   nextRound();
 }
 
@@ -372,7 +381,7 @@ function playSelected(k){
     if(typeof eff==='function') eff(h);
     outT.textContent='Legendary played';
     h.plays--;
-    if(S.boss.hp<=0) return; // onBossDefeated already handled
+    if(S.boss.hp<=0) return; // handled in applyDamage/onBossDefeated
     renderAll(); maybeBossPhase(); return;
   }
 
@@ -382,7 +391,7 @@ function playSelected(k){
 
   h.plays--;
   let dmg=CFG.DMG; if(r===1) dmg += (1 + (classMods[h.cls].lucky||0));
-  applyDamage({amount:dmg, by:k, tag:'hit'}); // kill + finisher decided here
+  applyDamage({amount:dmg, by:k, tag:'hit'}); // sets finisher on kill
 
   let tag=`Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){ shield(CFG.SHIELD+(classMods[h.cls].shield||0),h); tag+=` • ♣ Guard +${CFG.SHIELD+(classMods[h.cls].shield||0)}`; }
@@ -417,38 +426,49 @@ function confirmAssist(){
 
 /* ================== Rewards & Legendaries ================== */
 function addUpgrade(h,rank,suit){ const map={J:6,Q:7,K:8,X:9}; let v=map[rank], s=suit; if(rank==='X') s=SUITS[Math.floor(Math.random()*SUITS.length)]; h.discard.push({type:'num',v,s}); toast(`${h===S.heroes.A?'Hero A':'Hero B'}: +${v}${s} (upgrade)`,'good'); }
-function grantLegendaryTo(k){
-  const b=S.finisher?.royal || S.boss; const h=S.heroes[k]; const key=`${b.rank}${b.suit}`;
-  h.discard.push({type:'face',rank:b.rank,s:b.suit});
+
+function grantLegendaryTo(k, royal){
+  const h = S.heroes[k];
+  const r = royal || (S.finisher?.royal || S.boss);
+  const key = `${r.rank}${r.suit}`;
+  h.discard.push({type:'face',rank:r.rank,s:r.suit});
   toast(`Legendary → Hero ${k}: ${key}`,'good');
   logLine(`Legendary → ${key} → Hero ${k}`);
   S.legendaryClaimed = true;
 }
-function autoGrantLegendaryIfEligible(){
-  const f=S.finisher, b=S.boss;
-  if(!f || b.rank==='X' || f.via!=='hit') return false;
-  const finisher=S.heroes[f.who];
-  if(classMods[finisher.cls].suits.includes(b.suit)){ grantLegendaryTo(f.who); return true; }
+
+function simpleLegendaryGrant(){
+  const f = S.finisher;
+  if (!f || f.via !== 'hit') return false;
+  if (f.royal.rank === 'X') return false; // Jokers never
+  const cls = S.heroes[f.who].cls;
+  const key = `${f.royal.rank}${f.royal.suit}`;
+  if (ELIGIBLE[cls]?.has(key)) {
+    grantLegendaryTo(f.who, f.royal);
+    return true;
+  }
   return false;
 }
 
 function onBossDefeated(reason='defeated'){
   toast(`Royal ${reason} — rewards ready.`,'good');
-  // Give upgrades to both heroes
+  // Auto-upgrades to both heroes
   addUpgrade(S.heroes.A,S.boss.rank,S.boss.suit);
   addUpgrade(S.heroes.B,S.boss.rank,S.boss.suit);
 
-  // Auto-grant Legendary if eligible (hit finisher & class-suit match)
-  autoGrantLegendaryIfEligible();
+  // Auto-grant Legendary if finisher class is eligible for that exact Royal
+  simpleLegendaryGrant();
 
   const f=S.finisher;
+  const royalTxt = f ? `${f.royal.rank}${f.royal.suit}` : '';
   const note = (!f) ? '' :
-    (f.via==='poison' ? 'Finisher: Poison — either hero may claim the Legendary (one total).'
-     : `Finisher: Hero ${f.who}. Legendary granted if their class suits include the Royal’s suit.`);
+    (f.via==='poison'
+      ? `Finisher: Poison — either hero may claim ${royalTxt}.`
+      : `Finisher: Hero ${f.who} — auto-granted if their class is eligible for ${royalTxt}.`);
   $('rewHint').innerHTML =
     `Each hero auto-adds: J→6, Q→7, K→8, Joker→9 (to discard).<br/>
-     <b>Legendary:</b> On a hit kill, the finisher gets it if their <b>class suits</b> include the Royal’s suit.
-     On a poison kill, <b>either hero</b> may claim (one total). Jokers grant no Legendary.<br/>
+     <b>Legendary:</b> Hit kill → finisher gets it if their class is mapped to that Royal. 
+     Poison kill → either hero may claim (one total). Jokers never grant a Legendary.<br/>
      <span class="sub">${note}</span>`;
 
   openRewards();
@@ -456,28 +476,31 @@ function onBossDefeated(reason='defeated'){
 
 function openRewards(){ buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
 function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
+
 function buildChoices(k){
   const holder=$('choices'+k); holder.innerHTML='';
-  const h=S.heroes[k], b=S.boss, f=S.finisher;
+  const h=S.heroes[k];
+  const r = S.finisher?.royal || {rank:S.boss.rank, suit:S.boss.suit};
+  const keyRoyal = `${r.rank}${r.suit}`;
 
-  const autoGranted = S.legendaryClaimed && f && f.via==='hit';
-  const poisonClaimAvailable = f && f.via==='poison' && b.rank!=='X' && !S.legendaryClaimed;
+  const poisonClaimAvailable = S.finisher && S.finisher.via === 'poison'
+    && r.rank!=='X' && !S.legendaryClaimed;
 
-  if(poisonClaimAvailable){
-    const key=`${b.rank}${b.suit}`;
-    const btn=document.createElement('button'); btn.className='btn green'; btn.textContent=`Claim ${key} (Legendary)`;
-    btn.onclick=()=>{ if(S.legendaryClaimed) return; grantLegendaryTo(k); buildChoices(k==='A'?'B':'A'); btn.disabled=true; btn.textContent='Claimed'; };
+  if (poisonClaimAvailable) {
+    const btn=document.createElement('button');
+    btn.className='btn green'; btn.textContent=`Claim ${keyRoyal} (Legendary)`;
+    btn.onclick=()=>{ if(S.legendaryClaimed) return; grantLegendaryTo(k, r); buildChoices(k==='A'?'B':'A'); btn.disabled=true; btn.textContent='Claimed'; };
     holder.appendChild(btn);
     const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px';
     info.textContent='Poison finisher: either hero may claim (one total).';
     holder.appendChild(info);
-  } else if(autoGranted){
-    const note=document.createElement('div'); note.className='sub'; note.textContent=`Legendary auto-granted to Hero ${f.who}.`;
+  } else if (S.legendaryClaimed && S.finisher && S.finisher.via==='hit') {
+    const note=document.createElement('div'); note.className='sub'; note.textContent=`Legendary auto-granted to Hero ${S.finisher.who}.`;
     holder.appendChild(note);
   }
 
-  // Generics (always offered) + auto trash 1
-  (GENERIC_BY_RANK[b.rank]||[]).forEach(id=>{
+  // Generics for this rank (always offered) + auto trash 1 on use
+  (GENERIC_BY_RANK[r.rank]||[]).forEach(id=>{
     const g=GENERICS_ALL[id];
     const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label+' + Trash 1';
     tag.onclick=()=>{ g.run(h); autoTrashLowest(h,1); tag.disabled=true; tag.textContent='Used'; renderAll(); toast(`Hero ${k}: Generic + trash lowest`,'good'); };
