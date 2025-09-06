@@ -183,7 +183,7 @@
       <h3 id="rewTitle">Royal Defeated — Rewards</h3>
       <button class="btn" id="closeRewards">Close</button>
     </div>
-    <div class="sub" id="rewContext">Each hero: auto-add upgrade card (J→5, Q→6, K→7, Joker→9). If your class suits match the Royal’s suit, you may also add the Legendary face card; otherwise pick a Generic (one-time). Damage/Poison carry over; heals/shields apply now.</div>
+    <div class="sub" id="rewContext">Each hero: auto-add upgrade card (J→6, Q→7, K→8, Joker→9). If your class suits match the Royal’s suit, you may also add the Legendary face card; otherwise pick a Generic (one-time). Damage/Poison carry over; heals/shields apply now.</div>
     <div class="grid2" style="margin-top:10px">
       <div class="list">
         <div class="sub" style="margin-bottom:6px">Hero A choices</div>
@@ -215,7 +215,7 @@ const classMods={
   Priest:{maxHP:35,diamondCap:0,lucky:0,heal:1,shield:0,poi:0,suits:['♥','♦']},
 };
 
-/* Legendary effects (no IMM anywhere; shields only) */
+/* Legendary effects (Guard only—no IMM) */
 const legendaryEffects={
   Knight:{'J♣':h=>deal(6),'Q♣':h=>addPlay(h),'K♣':h=>deal(Math.ceil(currBoss().maxHP/3)+4),'J♥':h=>teamHeal(4),'Q♥':h=>teamHeal(3),'K♥':h=>shield(3,h)},
   Mage:{'J♦':h=>{deal(3);teamHeal(1);},'Q♦':h=>deal(4),'K♦':h=>{deal(8);addPoison(4);},'J♠':h=>addPoison(3),'Q♠':h=>shield(3,h),'K♠':h=>{deal(2);addPoison(2);}},
@@ -430,9 +430,7 @@ function bossAbilityResolve(){
 
 /* STRICT ALTERNATION targeting (A ↔ B), skipping downed hero if needed */
 function pickTargetAlternating(){
-  // First hit of game defaults to A if alive else B
   if (lastBossTarget===null) return (S.A.hp>0) ? 'A' : (S.B.hp>0 ? 'B' : null);
-  // Otherwise, alternate to the other hero if alive; if not, hit whoever is alive
   const other = (lastBossTarget==='A') ? 'B' : 'A';
   if (S[other].hp>0) return other;
   if (S[lastBossTarget].hp>0) return lastBossTarget;
@@ -552,9 +550,9 @@ function autoTrashLowest(h,n=1){
   for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; }
 }
 
-/* Auto add upgrade 5/6/7/9 to each hero when a royal dies */
+/* Auto add upgrade 6/7/8/9 to each hero when a royal dies */
 function addUpgradeCardToHero(h, rank, suit){
-  const map={J:5,Q:6,K:7,X:9};
+  const map={J:6,Q:7,K:8,X:9}; // UPDATED
   let v = map[rank];
   let s = suit;
   if(rank==='X'){ // Joker: random suit
