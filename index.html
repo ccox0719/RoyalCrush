@@ -31,6 +31,9 @@
   .pill{background:var(--chip);padding:4px 8px;border-radius:999px;color:var(--muted);font-weight:700;font-size:.8rem;border:1px solid var(--border)}
   .suit{font-size:1.05rem;padding:.15rem .45rem;border-radius:8px;background:#111727;border:1px solid var(--border)}
   .suit.heart{color:#ff7b7b}.suit.club{color:#7bffa1}.suit.spade{color:#7bb0ff}.suit.diamond{color:#ffd166}
+  .foci{display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle}
+  .focus{font-size:.85rem;padding:.1rem .4rem;border-radius:8px;background:#111727;border:1px solid var(--border)}
+  .focus.heart{color:#ff7b7b}.focus.club{color:#7bffa1}.focus.spade{color:#7bb0ff}.focus.diamond{color:#ffd166}
   .hand{display:flex;gap:8px;flex-wrap:wrap}
   .card{background:var(--card);border:1px solid #28324b;border-radius:12px;padding:8px 10px;min-width:58px;text-align:center}
   .card .v{font-size:1.15rem;font-weight:800}
@@ -48,8 +51,8 @@
   .modalWrap{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:saturate(120%) blur(2px);display:none;align-items:flex-end;z-index:9999}
   .modal{
     background:var(--panel);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:820px;margin:0 auto;
-    padding:12px 12px 12px;border:1px solid var(--border);border-bottom:0;box-shadow:0 -20px 60px rgba(0,0,0,.45) inset;
-    max-height:100dvh; /* never exceed the screen; no external scroll */
+    padding:12px;border:1px solid var(--border);border-bottom:0;box-shadow:0 -20px 60px rgba(0,0,0,.45) inset;
+    max-height:100dvh;
   }
   .modal h4{margin:2px 0 6px}
   .sub{margin:0 0 8px}
@@ -57,7 +60,8 @@
   .upLine{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .upBadge{padding:4px 8px;border-radius:999px;background:#121b31;border:1px solid var(--border);font-size:.78rem;color:var(--muted)}
   .tabs{display:flex;gap:6px;margin:6px 0 8px}
-  .tab{flex:1;text-align:center;background:#0e1526;border:1px solid var(--border);padding:.55rem .6rem;border-radius:10px;color:#cbd6ff;font-weight:800}
+  .tab{flex:1;text-align:center;background:#0e1526;border:1px solid var(--border);padding:.55rem .6rem;border-radius:10px;color:#cbd6ff;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px}
+  .tab .foci{margin:0}
   .tab.active{background:linear-gradient(180deg,#1a2440,#0f1730);box-shadow:0 6px 18px rgba(0,0,0,.25), 0 0 0 1px var(--border) inset}
   .pane{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .rewardCard{border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#141a2b,#0e1424);padding:10px;box-shadow:0 8px 20px rgba(0,0,0,.2)}
@@ -67,17 +71,15 @@
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
   .chipAttr{background:#121b31;border:1px solid var(--border);color:#cbd6ff;padding:3px 7px;border-radius:999px;font-size:.74rem}
   .btnFull{width:100%}
-  .chosen{margin-top:6px}
-  .footerRow{display:flex;gap:8px;margin-top:10px}
+  .ghostMsg{font-size:.82rem;color:#9fb1d9}
+  .footerRow{display:flex;gap:8px;margin-top:10px;align-items:center}
   .btnPrimary{background:var(--accent);color:#061024;box-shadow:0 6px 18px rgba(122,160,255,.25)}
   .btnGhost{background:#0f1526;border:1px solid var(--border);color:#cbd6ff}
-  .ghostMsg{font-size:.82rem;color:#9fb1d9}
 
-  /* Compact mode for short screens */
+  /* Compact */
   @media (max-height: 720px){
     .modal{padding:10px}
     .legendCard{min-height:56px}
-    .pane{grid-template-columns:1fr 1fr}
     .chipAttr{font-size:.7rem}
     .tab{padding:.5rem .55rem}
   }
@@ -127,24 +129,21 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Rewards Modal (tabbed, fits one screen) -->
+<!-- Rewards Modal -->
 <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal" id="modal">
     <h4 id="modalTitle">Rewards</h4>
     <div class="note tiny sub" id="modalTip">Pick <strong>one</strong> reward per hero. Swap tabs to choose for the other hero.</div>
 
-    <!-- Upgrade explainer -->
     <div class="upgradeBox">
       <div class="upLine" id="upLine"></div>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
-      <button id="tabA" class="tab">A / Knight</button>
-      <button id="tabB" class="tab">B / Mage</button>
+      <button id="tabA" class="tab">A</button>
+      <button id="tabB" class="tab">B</button>
     </div>
 
-    <!-- One visible pane at a time (so it fits). No modal scrolling. -->
     <div class="pane" id="pane"></div>
 
     <div class="footerRow">
@@ -162,6 +161,12 @@
 ========================= */
 const SUITS = ["♣","♥","♠","♦"];
 const SUIT_NAME = { "♣":"Clubs", "♥":"Hearts", "♠":"Spades", "♦":"Diamonds" };
+const HERO_FOCUS = {
+  Knight:["♣","♥"],
+  Mage:["♦","♠"],
+  Assassin:["♣","♠"],
+  Priest:["♥","♦"]
+};
 
 const RULES = {
   bossHP:   { Jack:8, Queen:14, King:18, Joker:26 },
@@ -342,7 +347,7 @@ function playCard(heroId, value, suit){
 
   const idx = H.hand.findIndex(c=>c.v===value && c.s===suit);
   if (idx<0){ toast("Card not in hand."); return; }
-  const card = H.hand.splice(idx,1)[0];
+  const card = H.hand.splice(idx,1)[0];   // remove from hand
   H.plays -= 1;
 
   const d12 = rollD12();
@@ -387,6 +392,9 @@ function playCard(heroId, value, suit){
   } else {
     log(`${H.name} misses (d12 ${d12}${mod?`+${mod}`:""} > ${card.v}).`);
   }
+
+  // IMPORTANT: send the played card to discard so the deck can reshuffle later
+  S.heroes[heroId].discard.push(card);
 
   if (fumble){
     const id = lowestLivingHeroId();
@@ -562,13 +570,16 @@ function upgradePreview(){
 ========================= */
 function openRewardsModal(){
   const wrap = document.getElementById('modalWrap');
-  const pane = document.getElementById('pane');
   const tabA = document.getElementById('tabA');
   const tabB = document.getElementById('tabB');
 
-  // set tab labels with classes/HP
-  tabA.textContent = `${S.heroes.A.name}`;
-  tabB.textContent = `${S.heroes.B.name}`;
+  // Tab labels with suit foci
+  const labelWithFoci = (H)=> {
+    const [s1,s2]=HERO_FOCUS[H.cls];
+    return `${H.name}`;
+  };
+  tabA.innerHTML = `${labelWithFoci(S.heroes.A)} <span class="foci">${focusBadge(S.heroes.A.cls)}</span>`;
+  tabB.innerHTML = `${labelWithFoci(S.heroes.B)} <span class="foci">${focusBadge(S.heroes.B.cls)}</span>`;
 
   const applyTabClasses=()=>{
     tabA.classList.toggle('active', S.ui.tab==="A");
@@ -620,7 +631,6 @@ function paintRewardsPane(){
   const pane = document.getElementById('pane');
   pane.innerHTML = "";
 
-  // already resolved
   if (S.rewards[id]?.taken){
     const doneMsg = document.createElement('div');
     doneMsg.className="ghostMsg";
@@ -632,7 +642,6 @@ function paintRewardsPane(){
   }
 
   const isJoker = S.boss.rank==="Joker";
-  // Poison claim (not for Joker)
   if (!isJoker && S.finisher?.via==="poison" && !S.poisonLegendClaimed){
     const card = document.createElement('div'); card.className="rewardCard"; card.style.gridColumn="1 / -1";
     const btn = document.createElement('button'); btn.className="legendCard btnFull"; btn.textContent="Claim Legendary";
@@ -647,7 +656,6 @@ function paintRewardsPane(){
     pane.appendChild(card);
   }
 
-  // Generics (if not hit-auto-granted and not consumed by poison claim)
   const hitAuto = H.claimedLegend===true && S.finisher?.via==="hit";
   if (!hitAuto && !(S.finisher?.via==="poison" && S.poisonLegendClaimed)){
     (GENERICS[S.boss.rank]||[]).forEach(opt=>{
@@ -726,6 +734,13 @@ function teamLoseHP(n){
 /* =========================
     UI RENDER
 ========================= */
+function focusBadge(cls){
+  const [s1,s2]=HERO_FOCUS[cls];
+  const c1 = s1==='♥'?'heart':s1==='♣'?'club':s1==='♠'?'spade':'diamond';
+  const c2 = s2==='♥'?'heart':s2==='♣'?'club':s2==='♠'?'spade':'diamond';
+  return `<span class="focus ${c1}">${s1}</span><span class="focus ${c2}">${s2}</span>`;
+}
+
 function paint(){
   const nm = `${S.boss.rank}${S.boss.rank==="Joker"?"":" of "+SUIT_NAME[S.boss.suit]}`;
   document.getElementById('bossName').textContent = nm;
@@ -756,8 +771,11 @@ function paint(){
 function renderHero(id){
   const H = S.heroes[id];
   const wrap = document.getElementById(id==="A"?"heroA":"heroB");
+  const fociHTML = focusBadge(H.cls);
   wrap.innerHTML = `
-    <h3>${H.name} <span class="pill">${H.cls}</span></h3>
+    <h3>${H.name} <span class="pill">${H.cls}</span>
+      <span class="foci">${fociHTML}</span>
+    </h3>
     <div class="stats">
       <div class="stat" style="flex:1">
         <span>HP</span>
