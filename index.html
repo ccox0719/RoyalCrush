@@ -50,6 +50,7 @@
   .legend{background:linear-gradient(90deg,#ffd166,#ff9bd2,#80e8ff);color:#10131c}
   .dev{position:fixed;right:10px;top:10px}
   .tiny{font-size:.78rem;opacity:.85}
+  .upgradeBox{background:#101624;border:1px solid #27304a;border-radius:12px;padding:10px;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -97,6 +98,7 @@
 <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal" id="modal">
     <h4 id="modalTitle">Rewards</h4>
+    <div class="upgradeBox" id="upgradeBox"></div>
     <div class="note tiny" id="modalTip">Pick <strong>one</strong> reward per hero. Tap to apply; a “Chosen” chip will appear. Then Continue.</div>
     <div id="modalBody"></div>
     <div class="choiceRow" id="modalChoices"></div>
@@ -517,13 +519,40 @@ function bossPhase(){
 }
 
 /* =========================
-    REWARDS MODAL (choice + attributes)
+    UPGRADE PREVIEW (what the added royal card does)
+========================= */
+function suitEffectSummary(s){
+  // concise attributes with class notes
+  if (s==="♣") return "Guard: gain Shield +3 (Knight +1).";
+  if (s==="♥") return "Heal: heal lowest +3 (Priest +1).";
+  if (s==="♠") return "Poison: add +1 poison (Assassin +1).";
+  if (s==="♦") return "Play: gain +1 play (to 1+Diamond Cap; Mage +1 cap).";
+  return "";
+}
+function upgradePreviewText(rank, suit){
+  const upByRank = { Jack:6, Queen:7, King:8, Joker:9 };
+  const v = upByRank[rank];
+  if (rank==="Joker"){
+    return `Each hero gains a ${v} of a random suit. Suit effects: 
+    ♣ Guard +3 (Knight +1); ♥ Heal +3 (Priest +1); ♠ Poison +1 (Assassin +1); ♦ +1 Play (up to cap; Mage +1 cap).`;
+  } else {
+    return `Each hero gains a ${v} ${suit} — ${suitEffectSummary(suit)}`;
+  }
+}
+
+/* =========================
+    REWARDS MODAL (choice + attributes + upgrade explanation)
 ========================= */
 function openRewardsModal(){
   const wrap = document.getElementById('modalWrap');
   const body = document.getElementById('modalBody');
   const choices = document.getElementById('modalChoices');
   body.innerHTML = ""; choices.innerHTML = "";
+
+  // Upgrade explanation at top
+  const up = upgradePreviewText(S.boss.rank, S.boss.suit);
+  document.getElementById('upgradeBox').innerHTML =
+    `<div class="note"><strong>Upgrade this round:</strong> ${up}</div>`;
 
   const isJoker = S.boss.rank==="Joker";
 
