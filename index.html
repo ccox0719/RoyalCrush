@@ -31,7 +31,7 @@
   @media (max-width:780px){ .grid2{grid-template-columns:1fr} }
 
   /* Buttons */
-  .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#121826;color:var(--ink);cursor:pointer}
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#121826;color:#eaf2ff;cursor:pointer}
   .btn:active{transform:translateY(1px)}
   .btn.gray{background:#101520}
   .btn.green{background:#0f261c;border-color:#1e3e31}
@@ -193,7 +193,7 @@ function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({
 function makeHero(cls){ const m=classMods[cls]; return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:CFG.BASE_PLAYS,playsMax:CFG.BASE_PLAYS,shield:0,down:false,deck:startDeck(),discard:[],hand:[],sel:null,nextRollBonus:0}; }
 function buildGauntlet(){ const j=shuffle([...SUITS]).map(s=>({rank:'J',suit:s})); const q=shuffle([...SUITS]).map(s=>({rank:'Q',suit:s})); const k=shuffle([...SUITS]).map(s=>({rank:'K',suit:s})); return[...j,...q,...k,{rank:'X',suit:'X'},{rank:'X',suit:'X'}]; }
 
-let S={
+let S = {
   heroes:{A:makeHero('Knight'),B:makeHero('Mage')},
   boss:null,
   gauntlet:buildGauntlet(),
@@ -202,7 +202,8 @@ let S={
   lastTarget:null,
   finisher:null,
   legendaryClaimed:false,
-  genericTaken:{A:false,B:false}
+  genericTaken:{A:false,B:false},
+  lastCardValue: null
 };
 const keyOf=h=>S.heroes.A===h?'A':'B';
 
@@ -217,6 +218,9 @@ function logLine(t){ const el=document.createElement('div'); el.className='line'
 function setBoss(i){
   S.gi=i; const c=S.gauntlet[i], d=bossDefs[c.rank];
   S.boss={rank:c.rank,suit:c.suit,name:d.name,hp:d.hp,max:d.hp,atk:d.atk,round:1,poi:0,jplus:false,x2:false};
+
+  S.lastCardValue = null; // reset combo chain for this Royal 👈
+
   if(S.carry.dmg>0) applyDamage({amount:S.carry.dmg,by:null,tag:'carry'});
   if(S.carry.poi>0) S.boss.poi += S.carry.poi;
   S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
@@ -255,8 +259,8 @@ function heroPanelTemplate(k,h){
           ${h.nextRollBonus>0?`<span class="pill">Next Roll +${h.nextRollBonus}</span>`:''}
         </div>
         <div class="row" style="gap:6px">
-          <button class="btn mini gray hpMinus">−1</button>
-          <button class="btn mini gray hpPlus">+1</button>
+          <button class="btn mini gray hpMinus" title="−1 HP">−1</button>
+          <button class="btn mini gray hpPlus" title="+1 HP">+1</button>
         </div>
       </div>
       <div class="row" style="margin-top:6px; gap:10px; align-items:center">
@@ -264,7 +268,7 @@ function heroPanelTemplate(k,h){
         <div class="sub">Deck <b class="deckCount">${h.deck.length}</b></div>
         <div class="sub">Discard <b class="discCount">${h.discard.length}</b></div>
         <div class="sub">Hand <b class="handCount">${h.hand.length}</b></div>
-        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard hand, spend 1 play. Partner gets +3 to next d12 on a hit.">Assist +3</button>
+        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard your hand, spend 1 play. Partner gets +3 to next d12 if they hit.">Assist +3</button>
       </div>
       <div class="hand">
         ${h.hand.map((c,i)=>`<div class="cardlet ${c.type==='face'?'face':'num'}" data-idx="${i}" title="Tap to play">${c.type==='num'?`${c.v}${c.s}`:`${c.rank}${c.s}`}</div>`).join('')}
@@ -430,42 +434,94 @@ $('heroes').addEventListener('change',(e)=>{
 
 /* ================== Play / Assist core ================== */
 function playCardClick(k, idx, panel){
-  const h=S.heroes[k]; if(h.down){toast(`Hero ${k} is defeated.`, 'bad'); return;}
+  const h=S.heroes[k];
+  if(h.down){toast(`Hero ${k} is defeated.`, 'bad'); return;}
   if(h.plays<=0){toast(`Hero ${k} has no plays.`, 'bad'); return;}
-  const card=h.hand[idx]; if(!card){ toast('No card there.', 'bad'); return; }
+
+  const card=h.hand[idx];
+  if(!card){ toast('No card there.', 'bad'); return; }
+
   // Remove & send to discard
-  h.hand.splice(idx,1); h.discard.push(card);
+  h.hand.splice(idx,1);
+  h.discard.push(card);
 
-  const rollOut=panel.querySelector('.rollOut'), resOut=panel.querySelector('.resultOut');
+  const rollOut=panel.querySelector('.rollOut');
+  const resOut =panel.querySelector('.resultOut');
 
-  // Legendary: instant effect w/ description
+  // LEGENDARY: instant effect (with descriptive text via playLegendary)
   if(card.type==='face'){
     const key=`${card.rank}${card.s}`;
     const text = playLegendary(h,key);
     rollOut.textContent=`FACE ${key}`;
     resOut.textContent = text || 'Legendary played';
     h.plays--;
-    renderAll(); if(S.boss.hp<=0) return; maybeBossPhase(); return;
+    renderAll();
+    if(S.boss.hp<=0) return;
+    maybeBossPhase();
+    return;
   }
 
-  // Number card: tap → roll immediately
-  const raw=d12(), bonus=h.nextRollBonus||0, r=Math.min(11, raw+bonus); h.nextRollBonus=0;
-  rollOut.textContent=`d12: ${raw}${bonus?` (+${bonus}) = ${r}`:''}`;
+  // ====== COMBOS: Mirror Pair / Straight Pair ======
+  // Mirror Pair: same value as last card → auto hit
+  // Straight Pair: exactly +1 greater than last card → +1 to roll
+  let comboBonus = 0;
+  let autoHit    = false;
+
+  if (S.lastCardValue != null) {
+    if (card.v === S.lastCardValue) {
+      autoHit = true;
+      toast(`Mirror Pair! ${card.v} matches last card → Auto-Hit`, 'good');
+      logLine(`Combo: Mirror Pair (value ${card.v})`);
+    } else if (card.v === S.lastCardValue + 1) {
+      comboBonus = 1;
+      toast(`Straight Pair! ${S.lastCardValue}→${card.v} → +1 to roll`, 'good');
+      logLine(`Combo: Straight Pair (+1 bonus)`);
+    }
+  }
+  // Update the global last played value (for the *next* play)
+  S.lastCardValue = card.v;
+
+  // Roll and resolve hit/miss
+  const raw   = d12();
+  const bonus = (h.nextRollBonus||0) + comboBonus;
+  const roll  = Math.min(11, raw + bonus); // never fumble to 12
+  h.nextRollBonus = 0; // consume assist
   h.plays--;
 
-  if(r>card.v){ resOut.textContent=`Miss (${card.v}${card.s})`; renderAll(); maybeBossPhase(); return; }
+  rollOut.textContent = `d12: ${raw}${bonus?` (+${bonus}) = ${roll}`:''}`;
 
-  // Hit!
-  let dmg=CFG.DMG; if(r===1) dmg += (1 + (classMods[h.cls].lucky||0));
+  const hit = autoHit || (roll <= card.v);
+  if (!hit){
+    resOut.textContent = `Miss (${card.v}${card.s})`;
+    renderAll();
+    maybeBossPhase();
+    return;
+  }
+
+  // HIT!
+  let dmg = CFG.DMG;
+  if(!autoHit && roll===1){ dmg += (1 + (classMods[h.cls].lucky||0)); }
+
   applyDamage({amount:dmg, by:k, tag:'hit'});
-  let tag=`Hit −${dmg} with ${card.v}${card.s}`;
-  if(card.s==='♣'){ const v=CFG.SHIELD+(classMods[h.cls].shield||0); shield(v,h); tag+=` • ♣ Guard +${v}`; }
-  else if(card.s==='♥'){ const v=CFG.HEAL+(classMods[h.cls].heal||0); teamHeal(v); tag+=` • ♥ Heal lowest +${v}`; }
-  else if(card.s==='♠'){ const v=CFG.POI+(classMods[h.cls].poi||0); addPoison(v); tag+=` • ♠ POI +${v}`; }
-  else if(card.s==='♦'){ addPlay(h); tag+=' • ♦ +1 play'; }
-  resOut.textContent=tag;
 
-  renderAll(); maybeBossPhase();
+  // Suit riders (only on a hit)
+  let tag = autoHit ? `Auto-Hit with ${card.v}${card.s}` : `Hit −${dmg} with ${card.v}${card.s}`;
+  if(card.s==='♣'){
+    const v=CFG.SHIELD+(classMods[h.cls].shield||0);
+    shield(v,h); tag+=` • ♣ Guard +${v}`;
+  }else if(card.s==='♥'){
+    const v=CFG.HEAL+(classMods[h.cls].heal||0);
+    teamHeal(v); tag+=` • ♥ Heal lowest +${v}`;
+  }else if(card.s==='♠'){
+    const v=CFG.POI+(classMods[h.cls].poi||0);
+    addPoison(v); tag+=` • ♠ POI +${v}`;
+  }else if(card.s==='♦'){
+    addPlay(h); tag+=' • ♦ +1 play';
+  }
+
+  resOut.textContent = tag;
+  renderAll();
+  maybeBossPhase();
 }
 
 function assistPartner(fromKey){
@@ -496,7 +552,23 @@ $('closeRewards').addEventListener('click', closeRewards);
 $('poiPlus').addEventListener('click',()=>{ S.boss.poi++; renderAll(); });
 $('poiMinus').addEventListener('click',()=>{ S.boss.poi=Math.max(0,S.boss.poi-1); renderAll(); });
 $('newRunBtn').addEventListener('click',()=>{ S.gauntlet=buildGauntlet(); setBoss(0); S.lastTarget=null; toast('New run: fresh gauntlet','good'); });
-$('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false,genericTaken:{A:false,B:false}}; setBoss(0); toast('New game','good'); });
+$('resetBtn').addEventListener('click',()=>{ 
+  const a=S.heroes.A.cls,b=S.heroes.B.cls; 
+  S={
+    heroes:{A:makeHero(a),B:makeHero(b)},
+    boss:null,
+    gauntlet:buildGauntlet(),
+    gi:0,
+    carry:{dmg:0,poi:0},
+    lastTarget:null,
+    finisher:null,
+    legendaryClaimed:false,
+    genericTaken:{A:false,B:false},
+    lastCardValue: null   // reset combo tracker on new game 👈
+  }; 
+  setBoss(0); 
+  toast('New game','good'); 
+});
 
 /* ================== Init ================== */
 function renderHeroes(){ const A=S.heroes.A, B=S.heroes.B; $('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B); }
