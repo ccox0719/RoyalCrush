@@ -120,8 +120,7 @@
   <div class="row" style="margin-top:12px">
     <button class="btn gray" id="newRunBtn">New Run</button>
     <button class="btn gray" id="resetBtn">New Game</button>
-    <div class="chip" id="hiChip">Best: 0 Royals · 0 dmg</div>
-    <span class="sub" style="margin-left:auto">Tip: tap a card to play it; Assist discards your hand and gives your partner <b>+3</b> to their next d12 (hit only).</span>
+    <span class="sub" style="margin-left:auto">Tip: tap a card to play it; Assist discards your hand and gives your partner <b>+1</b> to their next d12 (hit only).</span>
   </div>
 </div>
 
@@ -189,28 +188,12 @@ const d12=()=>Math.floor(Math.random()*12)+1;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const labelCard=c=>c.rank==='X'?'Joker':`${c.rank}${c.suit}`;
 
-/* ================== High Score (localStorage) ================== */
-const HS_KEY = 'royalcrush-hs-v1';
-function loadHS(){ try { return JSON.parse(localStorage.getItem(HS_KEY)) || {royals:0, damage:0}; } catch { return {royals:0, damage:0}; } }
-function saveHS(hs){ localStorage.setItem(HS_KEY, JSON.stringify(hs)); }
-function renderHighScore(){ const hs = loadHS(); const el = $('hiChip'); if (el) el.textContent = `Best: ${hs.royals} Royals · ${hs.damage} dmg`; }
-function startNewRunStats(){ S.run = { royalsCleared: 0, totalDamage: 0, startedAt: Date.now() }; renderHighScore(); }
-function maybeUpdateHighScore(){
-  const hs = loadHS();
-  if (S.run.royalsCleared > hs.royals ||
-     (S.run.royalsCleared === hs.royals && S.run.totalDamage > hs.damage)) {
-    saveHS({ royals: S.run.royalsCleared, damage: S.run.totalDamage });
-    renderHighScore();
-    toast(`New High Score! ${S.run.royalsCleared} Royals · ${S.run.totalDamage} dmg`, 'good');
-  }
-}
-
 /* ================== State ================== */
 function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s}))); return shuffle(d); }
 function makeHero(cls){ const m=classMods[cls]; return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:CFG.BASE_PLAYS,playsMax:CFG.BASE_PLAYS,shield:0,down:false,deck:startDeck(),discard:[],hand:[],sel:null,nextRollBonus:0}; }
 function buildGauntlet(){ const j=shuffle([...SUITS]).map(s=>({rank:'J',suit:s})); const q=shuffle([...SUITS]).map(s=>({rank:'Q',suit:s})); const k=shuffle([...SUITS]).map(s=>({rank:'K',suit:s})); return[...j,...q,...k,{rank:'X',suit:'X'},{rank:'X',suit:'X'}]; }
 
-let S = {
+let S={
   heroes:{A:makeHero('Knight'),B:makeHero('Mage')},
   boss:null,
   gauntlet:buildGauntlet(),
@@ -219,8 +202,7 @@ let S = {
   lastTarget:null,
   finisher:null,
   legendaryClaimed:false,
-  genericTaken:{A:false,B:false},
-  lastCardValue: null
+  genericTaken:{A:false,B:false}
 };
 const keyOf=h=>S.heroes.A===h?'A':'B';
 
@@ -241,18 +223,7 @@ function setBoss(i){
   for(const k of ['A','B']){ const h=S.heroes[k]; h.plays=CFG.BASE_PLAYS; h.playsMax=CFG.BASE_PLAYS; h.shield=0; drawUp(k); }
   renderAll();
 }
-function nextBoss(){
-  if (S.gi < S.gauntlet.length - 1) {
-    setBoss(S.gi + 1);
-  } else {
-    // End of run → check high score, then new run
-    maybeUpdateHighScore();
-    toast('Gauntlet complete! New run.','good');
-    S.gauntlet = buildGauntlet();
-    startNewRunStats();
-    setBoss(0);
-  }
-}
+function nextBoss(){ if(S.gi<S.gauntlet.length-1) setBoss(S.gi+1); else{ toast('Gauntlet complete! New run.','good'); S.gauntlet=buildGauntlet(); setBoss(0); } }
 
 /* ================== Draw & Render ================== */
 function drawOne(k){ const h=S.heroes[k]; if(h.deck.length===0){ if(h.discard.length===0) return false; h.deck=shuffle(h.discard.splice(0)); } h.hand.push(h.deck.pop()); return true; }
@@ -293,7 +264,7 @@ function heroPanelTemplate(k,h){
         <div class="sub">Deck <b class="deckCount">${h.deck.length}</b></div>
         <div class="sub">Discard <b class="discCount">${h.discard.length}</b></div>
         <div class="sub">Hand <b class="handCount">${h.hand.length}</b></div>
-        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard hand, spend 1 play. Partner gets +3 to next d12 on a hit.">Assist +3</button>
+        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard hand, spend 1 play. Partner gets +1 to next d12 on a hit.">Assist +1</button>
       </div>
       <div class="hand">
         ${h.hand.map((c,i)=>`<div class="cardlet ${c.type==='face'?'face':'num'}" data-idx="${i}" title="Tap to play">${c.type==='num'?`${c.v}${c.s}`:`${c.rank}${c.s}`}</div>`).join('')}
@@ -324,13 +295,6 @@ function applyDamage(packet){
   if (S.boss.hp<=0 || packet.amount<=0) return;
   const pre=S.boss.hp;
   S.boss.hp=Math.max(0,S.boss.hp - packet.amount);
-
-  // Track hero damage toward high score (cap at remaining HP)
-  if (packet.by) {
-    const dealt = Math.min(packet.amount, pre);
-    S.run.totalDamage = (S.run.totalDamage || 0) + dealt;
-  }
-
   renderBossBar();
   if(pre>0 && S.boss.hp===0){
     S.finisher = { via: packet.tag==='poison'?'poison':'hit', who: packet.tag==='poison'?null:packet.by, royal:{rank:S.boss.rank,suit:S.boss.suit,idx:S.gi} };
@@ -394,7 +358,6 @@ function grantLegendaryTo(k,r){ const h=S.heroes[k]; const key=`${r.rank}${r.sui
 function simpleLegendaryGrant(){ const f=S.finisher; if(!f||f.via!=='hit'||f.royal.rank==='X') return false; const cls=S.heroes[f.who].cls; const key=`${f.royal.rank}${f.royal.suit}`; if(ELIGIBLE[cls]?.has(key)){ grantLegendaryTo(f.who,f.royal); return true; } return false; }
 
 function onBossDefeated(reason='defeated'){
-  S.run.royalsCleared = (S.run.royalsCleared || 0) + 1; // track clears
   toast(`Royal ${reason} — rewards ready.`,'good');
   addUpgrade(S.heroes.A,S.boss.rank,S.boss.suit);
   addUpgrade(S.heroes.B,S.boss.rank,S.boss.suit);
@@ -461,7 +424,7 @@ $('heroes').addEventListener('change',(e)=>{
   if(!e.target.classList.contains('classSel')) return;
   const k=getHeroFromEl(e.target); if(!k) return;
   const h=heroObj(k); const r=h.hp/h.maxHP||1;
-  h.cls=e.target.value; h.maxHP=classMods[h.cls].maxHP; h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);
+  h.cls=e.target.value; h.maxHP=classMods[h.cls].maxHP; h.hp=clamp(Math.round(h.maxHP+r*0),0,h.maxHP);
   renderHeroes();
 });
 
@@ -494,35 +457,16 @@ function playCardClick(k, idx, panel){
     return;
   }
 
-  // ====== COMBOS: Mirror Pair / Straight Pair ======
-  let comboBonus = 0;
-  let autoHit    = false;
-
-  if (S.lastCardValue != null) {
-    if (card.v === S.lastCardValue) {
-      autoHit = true;
-      toast(`Mirror Pair! ${card.v} matches last card → Auto-Hit`, 'good');
-      logLine(`Combo: Mirror Pair (value ${card.v})`);
-    } else if (card.v === S.lastCardValue + 1) {
-      comboBonus = 1;
-      toast(`Straight Pair! ${S.lastCardValue}→${card.v} → +1 to roll`, 'good');
-      logLine(`Combo: Straight Pair (+1 bonus)`);
-    }
-  }
-  // Update for next play
-  S.lastCardValue = card.v;
-
-  // Roll and resolve
+  // Number card: tap → roll immediately
   const raw   = d12();
-  const bonus = (h.nextRollBonus||0) + comboBonus;
-  const roll  = Math.min(11, raw + bonus);
+  const bonus = (h.nextRollBonus||0); // assist (+1) applies here
+  const roll  = Math.min(11, raw + bonus); // never fumble to 12
   h.nextRollBonus = 0; // consume assist
   h.plays--;
 
   rollOut.textContent = `d12: ${raw}${bonus?` (+${bonus}) = ${roll}`:''}`;
 
-  const hit = autoHit || (roll <= card.v);
-  if (!hit){
+  if (roll > card.v){
     resOut.textContent = `Miss (${card.v}${card.s})`;
     renderAll();
     maybeBossPhase();
@@ -531,12 +475,12 @@ function playCardClick(k, idx, panel){
 
   // HIT!
   let dmg = CFG.DMG;
-  if(!autoHit && roll===1){ dmg += (1 + (classMods[h.cls].lucky||0)); }
+  if(roll===1){ dmg += (1 + (classMods[h.cls].lucky||0)); }
 
   applyDamage({amount:dmg, by:k, tag:'hit'});
 
-  // Suit riders
-  let tag = autoHit ? `Auto-Hit with ${card.v}${card.s}` : `Hit −${dmg} with ${card.v}${card.s}`;
+  // Suit riders (only on a hit)
+  let tag = `Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){
     const v=CFG.SHIELD+(classMods[h.cls].shield||0);
     shield(v,h); tag+=` • ♣ Guard +${v}`;
@@ -565,10 +509,11 @@ function assistPartner(fromKey){
   from.plays--;
 
   const partner = fromKey==='A' ? 'B' : 'A';
-  S.heroes[partner].nextRollBonus = 3;
+  // Overwrite with +1 next roll bonus
+  S.heroes[partner].nextRollBonus = 1;
 
-  toast(`Assist: ${fromKey} discarded ${count} → ${partner} gets +3 to next d12 (hit only)`, 'good');
-  logLine(`Assist → ${partner} +3 next roll (from ${fromKey})`);
+  toast(`Assist: ${fromKey} discarded ${count} → ${partner} gets +1 to next d12 (hit only)`, 'good');
+  logLine(`Assist → ${partner} +1 next roll (from ${fromKey})`);
   renderAll(); maybeBossPhase();
 }
 
@@ -581,45 +526,13 @@ $('closeRewards').addEventListener('click', closeRewards);
 /* ================== Boss/Global controls ================== */
 $('poiPlus').addEventListener('click',()=>{ S.boss.poi++; renderAll(); });
 $('poiMinus').addEventListener('click',()=>{ S.boss.poi=Math.max(0,S.boss.poi-1); renderAll(); });
-$('newRunBtn').addEventListener('click',()=>{
-  // End current run and start new one
-  maybeUpdateHighScore();
-  S.gauntlet=buildGauntlet();
-  startNewRunStats();
-  setBoss(0);
-  S.lastTarget=null;
-  toast('New run: fresh gauntlet','good');
-});
-$('resetBtn').addEventListener('click',()=>{
-  // End current run and start a whole new game
-  maybeUpdateHighScore();
-  const a=S.heroes.A.cls,b=S.heroes.B.cls;
-  S={
-    heroes:{A:makeHero(a),B:makeHero(b)},
-    boss:null,
-    gauntlet:buildGauntlet(),
-    gi:0,
-    carry:{dmg:0,poi:0},
-    lastTarget:null,
-    finisher:null,
-    legendaryClaimed:false,
-    genericTaken:{A:false,B:false},
-    lastCardValue: null,
-    run: S.run // will be replaced below by startNewRunStats()
-  };
-  startNewRunStats();
-  setBoss(0);
-  toast('New game','good');
-});
+$('newRunBtn').addEventListener('click',()=>{ S.gauntlet=buildGauntlet(); setBoss(0); S.lastTarget=null; toast('New run: fresh gauntlet','good'); });
+$('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false,genericTaken:{A:false,B:false}}; setBoss(0); toast('New game','good'); });
 
 /* ================== Init ================== */
 function renderHeroes(){ const A=S.heroes.A, B=S.heroes.B; $('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B); }
 function renderBossBar(){ const p=S.boss.max? (S.boss.hp/S.boss.max)*100 : 0; $('hpBar').style.width=Math.max(0,Math.min(100,p))+'%'; $('hpNow').textContent=S.boss.hp; $('hpMax').textContent=S.boss.max; }
-function init(){
-  startNewRunStats();   // track current run from the start
-  setBoss(0);
-  renderHighScore();
-}
+function init(){ setBoss(0); }
 init();
 </script>
 </body>
