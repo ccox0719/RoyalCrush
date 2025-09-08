@@ -264,7 +264,7 @@ function heroPanelTemplate(k,h){
         <div class="sub">Deck <b class="deckCount">${h.deck.length}</b></div>
         <div class="sub">Discard <b class="discCount">${h.discard.length}</b></div>
         <div class="sub">Hand <b class="handCount">${h.hand.length}</b></div>
-        <button class="btn warn assistBtn" style="margin-left:auto">Assist (discard hand → partner +3 next d12)</button>
+        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard hand, spend 1 play. Partner gets +3 to next d12 on a hit.">Assist +3</button>
       </div>
       <div class="hand">
         ${h.hand.map((c,i)=>`<div class="cardlet ${c.type==='face'?'face':'num'}" data-idx="${i}" title="Tap to play">${c.type==='num'?`${c.v}${c.s}`:`${c.rank}${c.s}`}</div>`).join('')}
