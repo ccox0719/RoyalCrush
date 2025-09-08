@@ -31,7 +31,7 @@
   @media (max-width:780px){ .grid2{grid-template-columns:1fr} }
 
   /* Buttons */
-  .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#121826;color:#eaf2ff;cursor:pointer}
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#121826;color:var(--ink);cursor:pointer}
   .btn:active{transform:translateY(1px)}
   .btn.gray{background:#101520}
   .btn.green{background:#0f261c;border-color:#1e3e31}
@@ -120,6 +120,7 @@
   <div class="row" style="margin-top:12px">
     <button class="btn gray" id="newRunBtn">New Run</button>
     <button class="btn gray" id="resetBtn">New Game</button>
+    <div class="chip" id="hiChip">Best: 0 Royals · 0 dmg</div>
     <span class="sub" style="margin-left:auto">Tip: tap a card to play it; Assist discards your hand and gives your partner <b>+3</b> to their next d12 (hit only).</span>
   </div>
 </div>
@@ -188,6 +189,22 @@ const d12=()=>Math.floor(Math.random()*12)+1;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const labelCard=c=>c.rank==='X'?'Joker':`${c.rank}${c.suit}`;
 
+/* ================== High Score (localStorage) ================== */
+const HS_KEY = 'royalcrush-hs-v1';
+function loadHS(){ try { return JSON.parse(localStorage.getItem(HS_KEY)) || {royals:0, damage:0}; } catch { return {royals:0, damage:0}; } }
+function saveHS(hs){ localStorage.setItem(HS_KEY, JSON.stringify(hs)); }
+function renderHighScore(){ const hs = loadHS(); const el = $('hiChip'); if (el) el.textContent = `Best: ${hs.royals} Royals · ${hs.damage} dmg`; }
+function startNewRunStats(){ S.run = { royalsCleared: 0, totalDamage: 0, startedAt: Date.now() }; renderHighScore(); }
+function maybeUpdateHighScore(){
+  const hs = loadHS();
+  if (S.run.royalsCleared > hs.royals ||
+     (S.run.royalsCleared === hs.royals && S.run.totalDamage > hs.damage)) {
+    saveHS({ royals: S.run.royalsCleared, damage: S.run.totalDamage });
+    renderHighScore();
+    toast(`New High Score! ${S.run.royalsCleared} Royals · ${S.run.totalDamage} dmg`, 'good');
+  }
+}
+
 /* ================== State ================== */
 function startDeck(){ const d=[]; [2,3,4,5].forEach(v=>SUITS.forEach(s=>d.push({type:'num',v,s}))); return shuffle(d); }
 function makeHero(cls){ const m=classMods[cls]; return {cls,hp:m.maxHP,maxHP:m.maxHP,plays:CFG.BASE_PLAYS,playsMax:CFG.BASE_PLAYS,shield:0,down:false,deck:startDeck(),discard:[],hand:[],sel:null,nextRollBonus:0}; }
@@ -218,16 +235,24 @@ function logLine(t){ const el=document.createElement('div'); el.className='line'
 function setBoss(i){
   S.gi=i; const c=S.gauntlet[i], d=bossDefs[c.rank];
   S.boss={rank:c.rank,suit:c.suit,name:d.name,hp:d.hp,max:d.hp,atk:d.atk,round:1,poi:0,jplus:false,x2:false};
-
-  S.lastCardValue = null; // reset combo chain for this Royal 👈
-
   if(S.carry.dmg>0) applyDamage({amount:S.carry.dmg,by:null,tag:'carry'});
   if(S.carry.poi>0) S.boss.poi += S.carry.poi;
   S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
   for(const k of ['A','B']){ const h=S.heroes[k]; h.plays=CFG.BASE_PLAYS; h.playsMax=CFG.BASE_PLAYS; h.shield=0; drawUp(k); }
   renderAll();
 }
-function nextBoss(){ if(S.gi<S.gauntlet.length-1) setBoss(S.gi+1); else{ toast('Gauntlet complete! New run.','good'); S.gauntlet=buildGauntlet(); setBoss(0); } }
+function nextBoss(){
+  if (S.gi < S.gauntlet.length - 1) {
+    setBoss(S.gi + 1);
+  } else {
+    // End of run → check high score, then new run
+    maybeUpdateHighScore();
+    toast('Gauntlet complete! New run.','good');
+    S.gauntlet = buildGauntlet();
+    startNewRunStats();
+    setBoss(0);
+  }
+}
 
 /* ================== Draw & Render ================== */
 function drawOne(k){ const h=S.heroes[k]; if(h.deck.length===0){ if(h.discard.length===0) return false; h.deck=shuffle(h.discard.splice(0)); } h.hand.push(h.deck.pop()); return true; }
@@ -259,8 +284,8 @@ function heroPanelTemplate(k,h){
           ${h.nextRollBonus>0?`<span class="pill">Next Roll +${h.nextRollBonus}</span>`:''}
         </div>
         <div class="row" style="gap:6px">
-          <button class="btn mini gray hpMinus" title="−1 HP">−1</button>
-          <button class="btn mini gray hpPlus" title="+1 HP">+1</button>
+          <button class="btn mini gray hpMinus">−1</button>
+          <button class="btn mini gray hpPlus">+1</button>
         </div>
       </div>
       <div class="row" style="margin-top:6px; gap:10px; align-items:center">
@@ -268,7 +293,7 @@ function heroPanelTemplate(k,h){
         <div class="sub">Deck <b class="deckCount">${h.deck.length}</b></div>
         <div class="sub">Discard <b class="discCount">${h.discard.length}</b></div>
         <div class="sub">Hand <b class="handCount">${h.hand.length}</b></div>
-        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard your hand, spend 1 play. Partner gets +3 to next d12 if they hit.">Assist +3</button>
+        <button class="btn mini warn assistBtn" style="margin-left:auto" title="Discard hand, spend 1 play. Partner gets +3 to next d12 on a hit.">Assist +3</button>
       </div>
       <div class="hand">
         ${h.hand.map((c,i)=>`<div class="cardlet ${c.type==='face'?'face':'num'}" data-idx="${i}" title="Tap to play">${c.type==='num'?`${c.v}${c.s}`:`${c.rank}${c.s}`}</div>`).join('')}
@@ -299,6 +324,13 @@ function applyDamage(packet){
   if (S.boss.hp<=0 || packet.amount<=0) return;
   const pre=S.boss.hp;
   S.boss.hp=Math.max(0,S.boss.hp - packet.amount);
+
+  // Track hero damage toward high score (cap at remaining HP)
+  if (packet.by) {
+    const dealt = Math.min(packet.amount, pre);
+    S.run.totalDamage = (S.run.totalDamage || 0) + dealt;
+  }
+
   renderBossBar();
   if(pre>0 && S.boss.hp===0){
     S.finisher = { via: packet.tag==='poison'?'poison':'hit', who: packet.tag==='poison'?null:packet.by, royal:{rank:S.boss.rank,suit:S.boss.suit,idx:S.gi} };
@@ -362,6 +394,7 @@ function grantLegendaryTo(k,r){ const h=S.heroes[k]; const key=`${r.rank}${r.sui
 function simpleLegendaryGrant(){ const f=S.finisher; if(!f||f.via!=='hit'||f.royal.rank==='X') return false; const cls=S.heroes[f.who].cls; const key=`${f.royal.rank}${f.royal.suit}`; if(ELIGIBLE[cls]?.has(key)){ grantLegendaryTo(f.who,f.royal); return true; } return false; }
 
 function onBossDefeated(reason='defeated'){
+  S.run.royalsCleared = (S.run.royalsCleared || 0) + 1; // track clears
   toast(`Royal ${reason} — rewards ready.`,'good');
   addUpgrade(S.heroes.A,S.boss.rank,S.boss.suit);
   addUpgrade(S.heroes.B,S.boss.rank,S.boss.suit);
@@ -462,8 +495,6 @@ function playCardClick(k, idx, panel){
   }
 
   // ====== COMBOS: Mirror Pair / Straight Pair ======
-  // Mirror Pair: same value as last card → auto hit
-  // Straight Pair: exactly +1 greater than last card → +1 to roll
   let comboBonus = 0;
   let autoHit    = false;
 
@@ -478,13 +509,13 @@ function playCardClick(k, idx, panel){
       logLine(`Combo: Straight Pair (+1 bonus)`);
     }
   }
-  // Update the global last played value (for the *next* play)
+  // Update for next play
   S.lastCardValue = card.v;
 
-  // Roll and resolve hit/miss
+  // Roll and resolve
   const raw   = d12();
   const bonus = (h.nextRollBonus||0) + comboBonus;
-  const roll  = Math.min(11, raw + bonus); // never fumble to 12
+  const roll  = Math.min(11, raw + bonus);
   h.nextRollBonus = 0; // consume assist
   h.plays--;
 
@@ -504,7 +535,7 @@ function playCardClick(k, idx, panel){
 
   applyDamage({amount:dmg, by:k, tag:'hit'});
 
-  // Suit riders (only on a hit)
+  // Suit riders
   let tag = autoHit ? `Auto-Hit with ${card.v}${card.s}` : `Hit −${dmg} with ${card.v}${card.s}`;
   if(card.s==='♣'){
     const v=CFG.SHIELD+(classMods[h.cls].shield||0);
@@ -534,7 +565,6 @@ function assistPartner(fromKey){
   from.plays--;
 
   const partner = fromKey==='A' ? 'B' : 'A';
-  // Overwrite with +3 next roll bonus (cap 3)
   S.heroes[partner].nextRollBonus = 3;
 
   toast(`Assist: ${fromKey} discarded ${count} → ${partner} gets +3 to next d12 (hit only)`, 'good');
@@ -551,9 +581,19 @@ $('closeRewards').addEventListener('click', closeRewards);
 /* ================== Boss/Global controls ================== */
 $('poiPlus').addEventListener('click',()=>{ S.boss.poi++; renderAll(); });
 $('poiMinus').addEventListener('click',()=>{ S.boss.poi=Math.max(0,S.boss.poi-1); renderAll(); });
-$('newRunBtn').addEventListener('click',()=>{ S.gauntlet=buildGauntlet(); setBoss(0); S.lastTarget=null; toast('New run: fresh gauntlet','good'); });
-$('resetBtn').addEventListener('click',()=>{ 
-  const a=S.heroes.A.cls,b=S.heroes.B.cls; 
+$('newRunBtn').addEventListener('click',()=>{
+  // End current run and start new one
+  maybeUpdateHighScore();
+  S.gauntlet=buildGauntlet();
+  startNewRunStats();
+  setBoss(0);
+  S.lastTarget=null;
+  toast('New run: fresh gauntlet','good');
+});
+$('resetBtn').addEventListener('click',()=>{
+  // End current run and start a whole new game
+  maybeUpdateHighScore();
+  const a=S.heroes.A.cls,b=S.heroes.B.cls;
   S={
     heroes:{A:makeHero(a),B:makeHero(b)},
     boss:null,
@@ -564,16 +604,22 @@ $('resetBtn').addEventListener('click',()=>{
     finisher:null,
     legendaryClaimed:false,
     genericTaken:{A:false,B:false},
-    lastCardValue: null   // reset combo tracker on new game 👈
-  }; 
-  setBoss(0); 
-  toast('New game','good'); 
+    lastCardValue: null,
+    run: S.run // will be replaced below by startNewRunStats()
+  };
+  startNewRunStats();
+  setBoss(0);
+  toast('New game','good');
 });
 
 /* ================== Init ================== */
 function renderHeroes(){ const A=S.heroes.A, B=S.heroes.B; $('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B); }
 function renderBossBar(){ const p=S.boss.max? (S.boss.hp/S.boss.max)*100 : 0; $('hpBar').style.width=Math.max(0,Math.min(100,p))+'%'; $('hpNow').textContent=S.boss.hp; $('hpMax').textContent=S.boss.max; }
-function init(){ setBoss(0); }
+function init(){
+  startNewRunStats();   // track current run from the start
+  setBoss(0);
+  renderHighScore();
+}
 init();
 </script>
 </body>
