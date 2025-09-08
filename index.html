@@ -96,9 +96,7 @@
   </div>
 
   <!-- HEROES -->
-  <div class="grid2" style="margin-top:12px" id="heroes">
-    <!-- panel template duplicated at runtime -->
-  </div>
+  <div class="grid2" style="margin-top:12px" id="heroes"></div>
 
   <!-- FOOTER -->
   <div class="row" style="margin-top:12px">
@@ -169,7 +167,6 @@ const GENERIC_BY_RANK={J:['training','sprint','parry'],Q:['tactics','rally','sco
 
 /* ============ Utilities ============ */
 const $=sel=>document.querySelector(sel);
-const $$=(sel,root=document)=>Array.from(root.querySelectorAll(sel));
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const d12=()=>Math.floor(Math.random()*12)+1;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -188,18 +185,19 @@ let S={
   carry:{dmg:0,poi:0},
   lastTarget:null,
   finisher:null,
-  legendaryClaimed:false
+  legendaryClaimed:false,
+  genericTaken:{A:false,B:false}
 };
 const keyOf=h=>S.heroes.A===h?'A':'B';
 
 /* ============ Toast & Log ============ */
 function toast(msg,kind='info'){
   const d=document.createElement('div'); d.className='toast '+(kind==='bad'?'bad':kind==='good'?'good':''); d.textContent=msg;
-  $('#toasts').appendChild(d); setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600); setTimeout(()=>d.remove(),3000);
+  document.getElementById('toasts').appendChild(d); setTimeout(()=>{d.style.opacity='0';d.style.transition='opacity .35s';},2600); setTimeout(()=>d.remove(),3000);
 }
 function logLine(t){
   const el=document.createElement('div'); el.className='line'; el.textContent=t;
-  const log=$('#bossLog'); log.prepend(el); while(log.children.length>8) log.removeChild(log.lastChild);
+  const log=document.getElementById('bossLog'); log.prepend(el); while(log.children.length>8) log.removeChild(log.lastChild);
 }
 
 /* ============ Boss lifecycle ============ */
@@ -208,7 +206,7 @@ function setBoss(i){
   S.boss={rank:c.rank,suit:c.suit,name:d.name,hp:d.hp,max:d.hp,atk:d.atk,round:1,poi:0,jplus:false,x2:false};
   if(S.carry.dmg>0) applyDamage({amount:S.carry.dmg,by:null,tag:'carry'});
   if(S.carry.poi>0) S.boss.poi += S.carry.poi;
-  S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false;
+  S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
   for(const k of ['A','B']){ const h=S.heroes[k]; h.plays=CFG.BASE_PLAYS; h.playsMax=CFG.BASE_PLAYS; h.shield=0; drawUp(k); }
   renderAll();
 }
@@ -220,15 +218,15 @@ function drawUp(k,n=4){ const h=S.heroes[k]; while(h.hand.length<n && (h.deck.le
 
 function renderAll(){
   const b=S.boss;
-  $('#bossName').textContent=`${b.name} (${b.rank}${b.rank==='X'?'':b.suit})`;
-  $('#bossStats').textContent=`HP ${b.hp}/${b.max} • DMG ${b.atk}`;
-  $('#poiVal').textContent=b.poi; $('#roundOut').textContent=b.round;
+  document.getElementById('bossName').textContent=`${b.name} (${b.rank}${b.rank==='X'?'':b.suit})`;
+  document.getElementById('bossStats').textContent=`HP ${b.hp}/${b.max} • DMG ${b.atk}`;
+  document.getElementById('poiVal').textContent=b.poi; document.getElementById('roundOut').textContent=b.round;
   const parts=S.gauntlet.map((c,i)=>i===S.gi?`[${labelCard(c)}]`:labelCard(c));
-  $('#prog').textContent='Run: '+parts.join(' → ');
+  document.getElementById('prog').textContent='Run: '+parts.join(' → ');
   renderBossBar();
   renderHeroes();
 }
-function renderBossBar(){ const p=S.boss.max? (S.boss.hp/S.boss.max)*100 : 0; $('#hpBar').style.width=Math.max(0,Math.min(100,p))+'%'; $('#hpNow').textContent=S.boss.hp; $('#hpMax').textContent=S.boss.max; }
+function renderBossBar(){ const p=S.boss.max? (S.boss.hp/S.boss.max)*100 : 0; document.getElementById('hpBar').style.width=Math.max(0,Math.min(100,p))+'%'; document.getElementById('hpNow').textContent=S.boss.hp; document.getElementById('hpMax').textContent=S.boss.max; }
 
 function heroPanelTemplate(k,h){
   const suits=classMods[h.cls].suits.join(' ');
@@ -259,7 +257,7 @@ function heroPanelTemplate(k,h){
       </div>
       <div class="row" style="margin-top:6px">
         <button class="btn playBtn" style="flex:1">Play Selected & Roll d12</button>
-        <button class="btn gray assistBtn">Assist Partner</button>
+        <button class="btn gray assistBtn">Assist Partner (discard hand → +3 DMG)</button>
         <div class="chip rollOut">—</div>
         <div class="chip resultOut">—</div>
       </div>
@@ -267,7 +265,7 @@ function heroPanelTemplate(k,h){
 }
 function renderHeroes(){
   const A=S.heroes.A, B=S.heroes.B;
-  $('#heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B);
+  document.getElementById('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B);
 }
 
 /* ============ Party helpers ============ */
@@ -302,6 +300,67 @@ function bossPhase(){
   if(S.boss.hp<=0) return; nextRound();
 }
 
+/* ============ Legendary (now returns description) ============ */
+function playLegendary(h, key){
+  const cls = h.cls;
+  const b = S.boss;
+  // helpers to build text
+  const desc = [];
+  const say = (t)=>{ desc.push(t); };
+
+  switch(cls){
+    case 'Knight':
+      switch(key){
+        case 'J♣': applyDamage({amount:6,by:keyOf(h),tag:'legendary'}); say('J♣ → deal 6'); break;
+        case 'Q♣': addPlay(h); say('Q♣ → +1 play'); break;
+        case 'K♣': { const amt=Math.ceil(b.max/3)+4; applyDamage({amount:amt,by:keyOf(h),tag:'legendary'}); say(`K♣ → deal ${amt}`); break; }
+        case 'J♥': teamHeal(4); say('J♥ → team heal 4'); break;
+        case 'Q♥': teamHeal(3); say('Q♥ → team heal 3'); break;
+        case 'K♥': shield(3,h); say('K♥ → guard +3'); break;
+      }
+      break;
+    case 'Mage':
+      switch(key){
+        case 'J♦': applyDamage({amount:3,by:keyOf(h),tag:'legendary'}); teamHeal(1); say('J♦ → deal 3 & team heal 1'); break;
+        case 'Q♦': applyDamage({amount:4,by:keyOf(h),tag:'legendary'}); say('Q♦ → deal 4'); break;
+        case 'K♦': applyDamage({amount:8,by:keyOf(h),tag:'legendary'}); addPoison(4); say('K♦ → deal 8 & poison +4'); break;
+        case 'J♠': addPoison(3); say('J♠ → poison +3'); break;
+        case 'Q♠': shield(3,h); say('Q♠ → guard +3'); break;
+        case 'K♠': applyDamage({amount:2,by:keyOf(h),tag:'legendary'}); addPoison(2); say('K♠ → deal 2 & poison +2'); break;
+      }
+      break;
+    case 'Assassin':
+      switch(key){
+        case 'J♣': applyDamage({amount:2,by:keyOf(h),tag:'legendary'}); addPoison(1); say('J♣ → deal 2 & poison +1'); break;
+        case 'Q♣': applyDamage({amount:2,by:keyOf(h),tag:'legendary'}); addPoison(1); say('Q♣ → deal 2 & poison +1'); break;
+        case 'K♣': applyDamage({amount:9,by:keyOf(h),tag:'legendary'}); say('K♣ → deal 9'); break;
+        case 'J♠': addPoison(1); say('J♠ → poison +1'); break;
+        case 'Q♠': shield(3,h); say('Q♠ → guard +3'); break;
+        case 'K♠': addPoison(1); say('K♠ → poison +1'); break;
+      }
+      break;
+    case 'Priest':
+      switch(key){
+        case 'J♥': teamHeal(2); applyDamage({amount:3,by:keyOf(h),tag:'legendary'}); say('J♥ → team heal 2 & deal 3'); break;
+        case 'Q♥': teamHeal(3); applyDamage({amount:3,by:keyOf(h),tag:'legendary'}); say('Q♥ → team heal 3 & deal 3'); break;
+        case 'K♥': { const low=lowestHero(); const half=Math.ceil(low.maxHP/2); const before=low.hp; low.hp=Math.max(low.hp,half); low.down=false; say(`K♥ → set lowest to ≥ ${half} (was ${before})`); break; }
+        case 'J♦': applyDamage({amount:2,by:keyOf(h),tag:'legendary'}); say('J♦ → deal 2'); break;
+        case 'Q♦': applyDamage({amount:1,by:keyOf(h),tag:'legendary'}); teamHeal(1); say('Q♦ → deal 1 & team heal 1'); break;
+        case 'K♦': applyDamage({amount:5,by:keyOf(h),tag:'legendary'}); addPoison(2); teamHeal(2); say('K♦ → deal 5, poison +2, team heal 2'); break;
+      }
+      break;
+  }
+  return desc.join(' • ');
+}
+
+/* ============ Boss phase ============ */
+function bossPhase(){
+  if(S.boss.poi>0){ const pre=S.boss.hp; applyDamage({amount:S.boss.poi,by:null,tag:'poison'}); if(pre!==S.boss.hp){ const t=pre-S.boss.hp; toast(`Poison ticks for ${t}`,'good'); logLine(`Poison −${t}`); } if(S.boss.hp<=0) return; }
+  const a=bossAbility(); if(a){ logLine(`Ability → ${a}`); toast(`Royal ability: ${a}`); }
+  const atk=bossAttack(); logLine(`Attack → ${atk}`); toast(`Royal attack: ${atk}`);
+  if(S.boss.hp<=0) return; nextRound();
+}
+
 /* ============ Rewards ============ */
 function addUpgrade(h,rank,suit){ const map={J:6,Q:7,K:8,X:9}; let v=map[rank], s=suit; if(rank==='X') s=SUITS[Math.floor(Math.random()*SUITS.length)]; h.discard.push({type:'num',v,s}); toast(`${keyOf(h)}: +${v}${s}`,'good'); }
 function grantLegendaryTo(k,r){ const h=S.heroes[k]; const key=`${r.rank}${r.suit}`; h.discard.push({type:'face',rank:r.rank,s:r.suit}); toast(`Legendary → ${k}: ${key}`,'good'); logLine(`Legendary ${key} → ${k}`); S.legendaryClaimed=true; }
@@ -313,17 +372,18 @@ function onBossDefeated(reason='defeated'){
   addUpgrade(S.heroes.B,S.boss.rank,S.boss.suit);
   simpleLegendaryGrant();
   const f=S.finisher, txt=f?`${f.royal.rank}${f.royal.suit}`:''; const note=!f?'':(f.via==='poison' ?`Poison — either hero may claim ${txt}.`:`Finisher ${f.who} — auto-claim if eligible for ${txt}.`);
-  $('#rewHint').innerHTML=`Each hero auto-adds: J→6, Q→7, K→8, Joker→9 (to discard).<br/><b>Legendary:</b> Hit kill → finisher gets it if mapped; poison → either hero may claim (one total). Jokers never grant.<br/><span class="sub">${note}</span>`;
+  document.getElementById('rewHint').innerHTML=`Each hero auto-adds: J→6, Q→7, K→8, Joker→9 (to discard).<br/><b>Legendary:</b> Hit kill → finisher gets it if mapped; poison → either hero may claim (one total). Jokers never grant.<br/><span class="sub">${note}</span>`;
   openRewards();
 }
-function openRewards(){ buildChoices('A'); buildChoices('B'); $('#rewardsOverlay').classList.add('show'); }
-function closeRewards(){ $('#rewardsOverlay').classList.remove('show'); }
+function openRewards(){ buildChoices('A'); buildChoices('B'); document.getElementById('rewardsOverlay').classList.add('show'); }
+function closeRewards(){ document.getElementById('rewardsOverlay').classList.remove('show'); }
 
 function buildChoices(k){
   const holder = document.getElementById('choices'+k); holder.innerHTML='';
   const h=S.heroes[k];
   const r=S.finisher?.royal || {rank:S.boss.rank,suit:S.boss.suit};
   const keyRoyal=`${r.rank}${r.suit}`;
+
   const isPoison = !!S.finisher && S.finisher.via==='poison';
   const autoGrantedToK = S.legendaryClaimed && !!S.finisher && S.finisher.via==='hit' && S.finisher.who===k;
 
@@ -335,14 +395,26 @@ function buildChoices(k){
     const info=document.createElement('div'); info.className='sub'; info.style.marginTop='6px'; info.textContent='Poison finisher: either hero may claim (one total).'; holder.appendChild(info);
   }
 
-  // finisher auto-claimed: no generics shown for that hero
+  // finisher auto-claimed: no generics for that hero
   if(autoGrantedToK){ const note=document.createElement('div'); note.className='sub'; note.textContent=`Legendary auto-granted to ${k} (${keyRoyal}).`; holder.appendChild(note); return; }
 
-  // generics by rank (each also trashes 1)
+  // GENERICS: exactly ONE pick per hero per Royal
+  if (S.genericTaken[k]) {
+    const done=document.createElement('div'); done.className='sub'; done.textContent='Generic already chosen.'; holder.appendChild(done);
+    return;
+  }
+
   (GENERIC_BY_RANK[r.rank]||[]).forEach(id=>{
     const g=GENERICS_ALL[id];
     const tag=document.createElement('button'); tag.className='tag'; tag.textContent=g.label+' + Trash 1';
-    tag.onclick=()=>{ g.run(h); autoTrashLowest(h,1); tag.disabled=true; tag.textContent='Used'; renderAll(); toast(`${k}: Generic + trash lowest`,'good'); };
+    tag.onclick=()=>{ if(S.genericTaken[k]) return;
+      g.run(h); autoTrashLowest(h,1);
+      S.genericTaken[k]=true;
+      toast(`${k}: Generic chosen`, 'good');
+      // disable all generic buttons for this hero
+      holder.querySelectorAll('button.tag').forEach(b=>{ b.disabled=true; b.textContent='Used'; });
+      renderAll();
+    };
     holder.appendChild(tag);
   });
 }
@@ -351,22 +423,22 @@ function buildChoices(k){
 function getHeroFromEl(el){ const panel=el.closest('.hero'); return panel ? panel.dataset.hero : null; }
 function heroObj(k){ return S.heroes[k]; }
 
-function onHeroesClick(e){
+document.getElementById('heroes').addEventListener('click',(e)=>{
   const k=getHeroFromEl(e.target); if(!k) return;
   const panel=e.target.closest('.hero'); const h=heroObj(k);
   if(e.target.classList.contains('hpMinus')){ h.hp=clamp(h.hp-1,0,h.maxHP); if(h.hp<=0&&!h.down){h.down=true;toast(`Hero ${k} defeated!`,'bad')} renderAll(); return; }
   if(e.target.classList.contains('hpPlus')){ const was=h.down; h.hp=clamp(h.hp+1,0,h.maxHP); if(was&&h.hp>0){ h.down=false; toast(`Hero ${k} revived`,'good'); } renderAll(); return; }
   if(e.target.classList.contains('playBtn')){ playSelected(k,panel); return; }
-  if(e.target.classList.contains('assistBtn')){ openAssist(k); return; }
+  if(e.target.classList.contains('assistBtn')){ assistPartner(k); return; }
   if(e.target.classList.contains('cardlet')){ const idx=+e.target.dataset.idx; h.sel=(h.sel===idx?null:idx); renderHeroes(); return; }
-}
-function onHeroesChange(e){
+});
+document.getElementById('heroes').addEventListener('change',(e)=>{
   if(!e.target.classList.contains('classSel')) return;
   const k=getHeroFromEl(e.target); if(!k) return;
   const h=heroObj(k); const r=h.hp/h.maxHP||1;
   h.cls=e.target.value; h.maxHP=classMods[h.cls].maxHP; h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);
   renderHeroes();
-}
+});
 
 /* ============ Play / Assist core ============ */
 function playSelected(k,panel){
@@ -377,7 +449,14 @@ function playSelected(k,panel){
 
   const rollOut=panel.querySelector('.rollOut'), resOut=panel.querySelector('.resultOut');
 
-  if(card.type==='face'){ resOut.textContent='Legendary played'; rollOut.textContent=`FACE ${card.rank}${card.s}`; h.plays--; renderAll(); if(S.boss.hp<=0) return; maybeBossPhase(); return; }
+  if(card.type==='face'){
+    const key=`${card.rank}${card.s}`;
+    const text = playLegendary(h,key);
+    rollOut.textContent=`FACE ${key}`;
+    resOut.textContent = text || 'Legendary played';
+    h.plays--;
+    renderAll(); if(S.boss.hp<=0) return; maybeBossPhase(); return;
+  }
 
   const raw=d12(), bonus=h.nextRollBonus||0, r=Math.min(11,raw+bonus); h.nextRollBonus=0;
   rollOut.textContent=`d12: ${raw}${bonus?` (+${bonus}) = ${r}`:''}`;
@@ -394,26 +473,24 @@ function playSelected(k,panel){
   resOut.textContent=tag;
   renderAll(); maybeBossPhase();
 }
-function maybeBossPhase(){ const A=S.heroes.A,B=S.heroes.B; if((A.plays<=0||A.down)&&(B.plays<=0||B.down)) bossPhase(); }
 
-/* ============ Assist (lightweight modal-less variant) ============ */
-let assistFrom=null, assistSel=new Set();
-function openAssist(k){
-  assistFrom=k; assistSel=new Set();
-  const h=S.heroes[k];
-  // simple prompt-style picker: sacrifice all selected cards in hand (tap to toggle), confirm with native confirm
-  const chosen = prompt(`Type card indices to discard (space-separated)\nHand: ${h.hand.map((c,i)=>`${i}:${c.v}${c.s}`).join('  ')}`, "");
-  if(chosen==null) return;
-  const picks = chosen.split(/\s+/).map(x=>+x).filter(i=>Number.isInteger(i)&&i>=0&&i<h.hand.length);
-  if(picks.length===0){ toast('No cards selected','bad'); return; }
-  if(h.plays<=0){ toast('No plays left to assist','bad'); return; }
-  picks.sort((a,b)=>b-a).forEach(i=>{ h.discard.push(h.hand[i]); h.hand.splice(i,1); });
-  h.plays--;
-  const partner = (k==='A')?'B':'A';
-  S.heroes[partner].nextRollBonus = Math.min(CFG.ASSIST_CAP,(S.heroes[partner].nextRollBonus||0)+Math.min(CFG.ASSIST_CAP,picks.length));
-  toast(`Hero ${k} assists ${partner}: +${Math.min(CFG.ASSIST_CAP,picks.length)} to next d12`,'good');
+function assistPartner(fromKey){
+  const from=S.heroes[fromKey];
+  if(from.down){ toast(`Hero ${fromKey} is defeated.`, 'bad'); return; }
+  if(from.plays<=0){ toast(`Hero ${fromKey} has no plays.`, 'bad'); return; }
+  // discard entire hand
+  const count = from.hand.length;
+  while(from.hand.length){ from.discard.push(from.hand.pop()); }
+  from.plays--;
+  const partner = fromKey==='A' ? 'B' : 'A';
+  // immediate +3 damage credited to partner
+  applyDamage({amount:3, by:partner, tag:'assist'});
+  toast(`Assist: ${fromKey} discarded ${count} card(s) → ${partner} +3 DMG`, 'good');
+  logLine(`Assist → ${partner} +3 (from ${fromKey})`);
   renderAll(); maybeBossPhase();
 }
+
+function maybeBossPhase(){ const A=S.heroes.A,B=S.heroes.B; if((A.plays<=0||A.down)&&(B.plays<=0||B.down)) bossPhase(); }
 
 /* ============ Rewards flow wiring ============ */
 document.getElementById('ackRewards').addEventListener('click',()=>{ closeRewards(); nextBoss(); });
@@ -423,17 +500,11 @@ document.getElementById('closeRewards').addEventListener('click', closeRewards);
 document.getElementById('poiPlus').addEventListener('click',()=>{ S.boss.poi++; renderAll(); });
 document.getElementById('poiMinus').addEventListener('click',()=>{ S.boss.poi=Math.max(0,S.boss.poi-1); renderAll(); });
 document.getElementById('newRunBtn').addEventListener('click',()=>{ S.gauntlet=buildGauntlet(); setBoss(0); S.lastTarget=null; toast('New run: fresh gauntlet','good'); });
-document.getElementById('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false}; setBoss(0); toast('New game','good'); });
-
-/* ============ Delegated events on heroes container ============ */
-document.getElementById('heroes').addEventListener('click', onHeroesClick);
-document.getElementById('heroes').addEventListener('change', onHeroesChange);
+document.getElementById('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false,genericTaken:{A:false,B:false}}; setBoss(0); toast('New game','good'); });
 
 /* ============ Init ============ */
-function init(){
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
-  setBoss(0);
-}
+function renderHeroes(){ const A=S.heroes.A, B=S.heroes.B; document.getElementById('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B); }
+function init(){ if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); } setBoss(0); }
 init();
 </script>
 </body>
