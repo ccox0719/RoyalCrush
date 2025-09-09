@@ -157,21 +157,6 @@ const ELIGIBLE={
   Assassin:new Set(['J♣','Q♣','K♣','J♠','Q♠','K♠']),
   Priest:new Set(['J♥','Q♥','K♥','J♦','Q♦','K♦']),
 };
-const GENERICS_ALL={
-  training:{label:'Training · +1⚔ +1♥',run:(h)=>{applyDamage({amount:1,by:keyOf(h),tag:'hit'});teamHeal(1)}},
-  sprint:{label:'Sprint · +2⚔, team −1',run:(h)=>{applyDamage({amount:2,by:keyOf(h),tag:'hit'});teamHurt(1)}},
-  parry:{label:'Parry · Guard +2',run:(h)=>{shield(2,h)}},
-  tactics:{label:'Tactics · +2⚔',run:(h)=>{applyDamage({amount:2,by:keyOf(h),tag:'hit'})}},
-  rally:{label:'Rally · +1⚔ +1♥',run:(h)=>{applyDamage({amount:1,by:keyOf(h),tag:'hit'});teamHeal(1)}},
-  scout:{label:'Scout · +3⚔',run:(h)=>{applyDamage({amount:3,by:keyOf(h),tag:'hit'})}},
-  resolve:{label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
-  fortify:{label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=lowestHero(); t.maxHP+=1; t.hp=Math.min(t.maxHP,t.hp+1)}},
-  purge:{label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
-  spark:{label:'Chaos Spark · +5⚔',run:(h)=>{applyDamage({amount:5,by:keyOf(h),tag:'hit'})}},
-  trick:{label:'Chaos Trick · +3⚔',run:(h)=>{applyDamage({amount:3,by:keyOf(h),tag:'hit'})}},
-  ward:{label:'Chaos Ward · Guard +2',run:(h)=>{shield(2,h)}},
-};
-const GENERIC_BY_RANK={J:['training','sprint','parry'],Q:['tactics','rally','scout'],K:['resolve','fortify','purge'],X:['spark','trick','ward']};
 
 /* ================== Utilities ================== */
 const $=id=>document.getElementById(id);
@@ -194,7 +179,8 @@ let S={
   lastTarget:null,
   finisher:null,
   legendaryClaimed:false,
-  genericTaken:{A:false,B:false}
+  genericTaken:{A:false,B:false},
+  inRewards:false      // <<< NEW: are we in the rewards screen?
 };
 const keyOf=h=>S.heroes.A===h?'A':'B';
 
@@ -209,9 +195,14 @@ function logLine(t){ const el=document.createElement('div'); el.className='line'
 function setBoss(i){
   S.gi=i; const c=S.gauntlet[i], d=bossDefs[c.rank];
   S.boss={rank:c.rank,suit:c.suit,name:d.name,hp:d.hp,max:d.hp,atk:d.atk,round:1,poi:0,jplus:false,x2:false};
-  if(S.carry.dmg>0) applyDamage({amount:S.carry.dmg,by:null,tag:'carry'});
-  if(S.carry.poi>0) S.boss.poi += S.carry.poi;
-  S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
+
+  // Apply carry-over first thing
+  if(S.carry.dmg>0){ applyDamage({amount:S.carry.dmg,by:null,tag:'carry'}); }
+  if(S.carry.poi>0){ S.boss.poi += S.carry.poi; }
+  if(S.carry.dmg||S.carry.poi){ toast(`Carry-over → −${S.carry.dmg||0} DMG, +${S.carry.poi||0} POI`,'good'); logLine(`Carry: dmg ${S.carry.dmg||0}, poi ${S.carry.poi||0}`); }
+  S.carry={dmg:0,poi:0};
+
+  S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
   for(const k of ['A','B']){ const h=S.heroes[k]; h.plays=CFG.BASE_PLAYS; h.playsMax=CFG.BASE_PLAYS; h.shield=0; drawUp(k); }
   renderAll();
 }
@@ -278,7 +269,7 @@ function shield(n,h){ h.shield=(h.shield||0)+n }
 function addPoison(n){ if(S.boss.hp>0) S.boss.poi+=n; else S.carry.poi+=n; }
 function autoTrashLowest(h,n=1){ const take=arr=>{let bi=-1,bv=99;arr.forEach((c,i)=>{if(c.type==='num'&&c.v<bv){bv=c.v;bi=i}}); if(bi>=0){arr.splice(bi,1);return true} return false}; for(let i=0;i<n;i++){ if(take(h.hand))continue; if(take(h.discard))continue; if(take(h.deck))continue; } }
 
-/* ================== Damage & Boss phase ================== */
+/* =========== Damage funnel + reward-safe awardDamage =========== */
 function applyDamage(packet){
   if (S.boss.hp<=0 || packet.amount<=0) return;
   const pre=S.boss.hp;
@@ -289,6 +280,20 @@ function applyDamage(packet){
     onBossDefeated(packet.tag==='poison'?'by Poison':'defeated');
   }
 }
+
+/* NEW: use this in generics so DMG chosen during Rewards becomes carry-over */
+function awardDamage(n, by){
+  if(n<=0) return;
+  if(!S.inRewards && S.boss && S.boss.hp>0){
+    applyDamage({amount:n, by, tag:'hit'});
+  }else{
+    S.carry.dmg += n;
+    toast(`Carry-over damage +${n} stored for next Royal`, 'good');
+    logLine(`Carry+ DMG ${n}`);
+  }
+}
+
+/* ================== Boss phase ================== */
 function bossAbility(){ const b=S.boss, r=d12(); if(b.rank==='J'){ b.jplus=(r<=3); return `J roll ${r}: ${b.jplus?'+2 DMG next attack':'no boost'}`; } if(b.rank==='Q'){ if(r<=3){ const g=Math.min(3,b.max-b.hp); b.hp+=g; renderBossBar(); return `Q roll ${r}: healed +${g}`; } return `Q roll ${r}: no heal`; } if(b.rank==='K'){ if(r<=2){ const p=b.poi; b.poi=0; return `K roll ${r}: purged ${p} poison`; } return `K roll ${r}: no purge`; } if(b.rank==='X'){ b.x2=(r>=8&&r<=10); return `Joker roll ${r}: ${b.x2?'x2 damage':'no double'}`; } }
 function pickTarget(){ if(S.lastTarget===null) return S.heroes.A.hp>0?'A':(S.heroes.B.hp>0?'B':null); const o=S.lastTarget==='A'?'B':'A'; if(S.heroes[o].hp>0) return o; if(S.heroes[S.lastTarget].hp>0) return S.lastTarget; return null; }
 function bossAttack(){ if(S.boss.hp<=0) return 'Down'; let dmg=S.boss.atk; if(S.boss.rank==='J'&&S.boss.jplus)dmg+=2; if(S.boss.rank==='X'&&S.boss.x2)dmg*=2; const t=pickTarget(); if(!t) return 'No targets'; const h=S.heroes[t]; const taken=Math.max(0,dmg-h.shield); h.shield=0; h.hp=clamp(h.hp-taken,0,h.maxHP); S.lastTarget=t; if(h.hp<=0 && !h.down){ h.down=true; toast(`Hero ${t} defeated!`,'bad'); } return `Boss → ${t} for ${taken}`; }
@@ -342,6 +347,23 @@ function playLegendary(h, key){
   return text;
 }
 
+/* ================== GENERICS (use awardDamage for DMG) ================== */
+const GENERICS_ALL={
+  training:{label:'Training · +1⚔ +1♥',run:(h)=>{awardDamage(1,keyOf(h));teamHeal(1)}},
+  sprint:{label:'Sprint · +2⚔, team −1',run:(h)=>{awardDamage(2,keyOf(h));teamHurt(1)}},
+  parry:{label:'Parry · Guard +2',run:(h)=>{shield(2,h)}},
+  tactics:{label:'Tactics · +2⚔',run:(h)=>{awardDamage(2,keyOf(h))}},
+  rally:{label:'Rally · +1⚔ +1♥',run:(h)=>{awardDamage(1,keyOf(h));teamHeal(1)}},
+  scout:{label:'Scout · +3⚔',run:(h)=>{awardDamage(3,keyOf(h))}},
+  resolve:{label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
+  fortify:{label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=lowestHero(); t.maxHP+=1; t.hp=Math.min(t.maxHP,t.hp+1)}},
+  purge:{label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
+  spark:{label:'Chaos Spark · +5⚔',run:(h)=>{awardDamage(5,keyOf(h))}},
+  trick:{label:'Chaos Trick · +3⚔',run:(h)=>{awardDamage(3,keyOf(h))}},
+  ward:{label:'Chaos Ward · Guard +2',run:(h)=>{shield(2,h)}},
+};
+const GENERIC_BY_RANK={J:['training','sprint','parry'],Q:['tactics','rally','scout'],K:['resolve','fortify','purge'],X:['spark','trick','ward']};
+
 /* ================== Rewards ================== */
 function addUpgrade(h,rank,suit){ const map={J:6,Q:7,K:8,X:9}; let v=map[rank], s=suit; if(rank==='X') s=SUITS[Math.floor(Math.random()*SUITS.length)]; h.discard.push({type:'num',v,s}); toast(`${keyOf(h)}: +${v}${s}`,'good'); }
 function grantLegendaryTo(k,r){ const h=S.heroes[k]; const key=`${r.rank}${r.suit}`; h.discard.push({type:'face',rank:r.rank,s:r.suit}); toast(`Legendary → ${k}: ${key}`,'good'); logLine(`Legendary ${key} → ${k}`); S.legendaryClaimed=true; }
@@ -356,8 +378,9 @@ function onBossDefeated(reason='defeated'){
   $('rewHint').innerHTML=`Each hero auto-adds: J→6, Q→7, K→8, Joker→9.<br/><b>Legendary:</b> Hit kill → finisher gets it if mapped; Poison → either hero may claim (one total). Jokers never grant.<br/><span class="sub">${note}</span>`;
   openRewards();
 }
-function openRewards(){ buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
-function closeRewards(){ $('rewardsOverlay').classList.remove('show'); }
+
+function openRewards(){ S.inRewards=true; buildChoices('A'); buildChoices('B'); $('rewardsOverlay').classList.add('show'); }
+function closeRewards(){ S.inRewards=false; $('rewardsOverlay').classList.remove('show'); }
 
 function buildChoices(k){
   const holder = $('choices'+k); holder.innerHTML='';
@@ -424,11 +447,9 @@ function playCardClick(k, idx){
   const card=h.hand[idx];
   if(!card){ toast('No card there.', 'bad'); return; }
 
-  // Remove & send to discard
   h.hand.splice(idx,1);
   h.discard.push(card);
 
-  // LEGENDARY
   if(card.type==='face'){
     const key=`${card.rank}${card.s}`;
     const text = playLegendary(h,key);
@@ -440,10 +461,9 @@ function playCardClick(k, idx){
     return;
   }
 
-  // Number card: roll now
   const raw   = d12();
   const bonus = (h.nextRollBonus||0);
-  const roll  = Math.min(11, raw + bonus); // never reaches 12 (fumble)
+  const roll  = Math.min(11, raw + bonus);
   h.nextRollBonus = 0;
   h.plays--;
 
@@ -456,13 +476,11 @@ function playCardClick(k, idx){
     return;
   }
 
-  // HIT!
   let dmg = CFG.DMG;
   if(roll===1){ dmg += (1 + (classMods[h.cls].lucky||0)); }
 
   applyDamage({amount:dmg, by:k, tag:'hit'});
 
-  // Suit riders
   let rider='';
   if(card.s==='♣'){ const v=CFG.SHIELD+(classMods[h.cls].shield||0); shield(v,h); rider=` • ♣ Guard +${v}`; }
   else if(card.s==='♥'){ const v=CFG.HEAL+(classMods[h.cls].heal||0); teamHeal(v); rider=` • ♥ Heal +${v}`; }
@@ -485,7 +503,6 @@ function assistPartner(fromKey){
   from.plays--;
 
   const partner = fromKey==='A' ? 'B' : 'A';
-  // Overwrite with +1 next roll bonus
   S.heroes[partner].nextRollBonus = 1;
 
   toast(`Assist: ${fromKey} discarded ${count} → ${partner} gets +1 to next d12 (hit only)`, 'good');
@@ -503,7 +520,7 @@ $('closeRewards').addEventListener('click', closeRewards);
 $('poiPlus').addEventListener('click',()=>{ S.boss.poi++; renderAll(); });
 $('poiMinus').addEventListener('click',()=>{ S.boss.poi=Math.max(0,S.boss.poi-1); renderAll(); });
 $('newRunBtn').addEventListener('click',()=>{ S.gauntlet=buildGauntlet(); setBoss(0); S.lastTarget=null; toast('New run: fresh gauntlet','good'); });
-$('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false,genericTaken:{A:false,B:false}}; setBoss(0); toast('New game','good'); });
+$('resetBtn').addEventListener('click',()=>{ const a=S.heroes.A.cls,b=S.heroes.B.cls; S={heroes:{A:makeHero(a),B:makeHero(b)},boss:null,gauntlet:buildGauntlet(),gi:0,carry:{dmg:0,poi:0},lastTarget:null,finisher:null,legendaryClaimed:false,genericTaken:{A:false,B:false},inRewards:false}; setBoss(0); toast('New game','good'); });
 
 /* ================== Init ================== */
 function renderHeroes(){ const A=S.heroes.A, B=S.heroes.B; $('heroes').innerHTML = heroPanelTemplate('A',A) + heroPanelTemplate('B',B); }
