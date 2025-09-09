@@ -165,18 +165,32 @@ const ELIGIBLE={
   Assassin:new Set(['J♣','Q♣','K♣','J♠','Q♠','K♠']),
   Priest:new Set(['J♥','Q♥','K♥','J♦','Q♦','K♦']),
 };
+
+/* ========= Helper: damage now vs carry-over after boss death ========= */
+function dmgNowOrCarry(n, h, tag='generic'){
+  if (n<=0) return;
+  if (S.boss && S.boss.hp>0){
+    applyDamage({amount:n, by:keyOf(h), tag});
+  } else {
+    S.carry.dmg += n;
+    logLine(`Carry-over: +${n} damage saved`);
+    toast(`Carry-over +${n} DMG`, 'good');
+  }
+}
+
+/* ========= Generics (fixed to use dmgNowOrCarry) ========= */
 const GENERICS_ALL={
-  training:{label:'Training · +1⚔ +1♥',run:(h)=>{applyDamage({amount:1,by:keyOf(h),tag:'hit'});teamHeal(1)}},
-  sprint:{label:'Sprint · +2⚔, team −1',run:(h)=>{applyDamage({amount:2,by:keyOf(h),tag:'hit'});teamHurt(1)}},
+  training:{label:'Training · +1⚔ +1♥',run:(h)=>{dmgNowOrCarry(1,h,'generic');teamHeal(1)}},
+  sprint:{label:'Sprint · +2⚔, team −1',run:(h)=>{dmgNowOrCarry(2,h,'generic');teamHurt(1)}},
   parry:{label:'Parry · Guard +2',run:(h)=>{shield(2,h)}},
-  tactics:{label:'Tactics · +2⚔',run:(h)=>{applyDamage({amount:2,by:keyOf(h),tag:'hit'})}},
-  rally:{label:'Rally · +1⚔ +1♥',run:(h)=>{applyDamage({amount:1,by:keyOf(h),tag:'hit'});teamHeal(1)}},
-  scout:{label:'Scout · +3⚔',run:(h)=>{applyDamage({amount:3,by:keyOf(h),tag:'hit'})}},
+  tactics:{label:'Tactics · +2⚔',run:(h)=>{dmgNowOrCarry(2,h,'generic')}},
+  rally:{label:'Rally · +1⚔ +1♥',run:(h)=>{dmgNowOrCarry(1,h,'generic');teamHeal(1)}},
+  scout:{label:'Scout · +3⚔',run:(h)=>{dmgNowOrCarry(3,h,'generic')}},
   resolve:{label:'Resolve · +2♥',run:(h)=>{teamHeal(2)}},
   fortify:{label:'Fortify · +1 Max♥ +1♥',run:(h)=>{const t=lowestHero(); t.maxHP+=1; t.hp=Math.min(t.maxHP,t.hp+1)}},
   purge:{label:'Purge · Trash 2 lowest',run:(h)=>{autoTrashLowest(h,2)}},
-  spark:{label:'Chaos Spark · +5⚔',run:(h)=>{applyDamage({amount:5,by:keyOf(h),tag:'hit'})}},
-  trick:{label:'Chaos Trick · +3⚔',run:(h)=>{applyDamage({amount:3,by:keyOf(h),tag:'hit'})}},
+  spark:{label:'Chaos Spark · +5⚔',run:(h)=>{dmgNowOrCarry(5,h,'generic')}},
+  trick:{label:'Chaos Trick · +3⚔',run:(h)=>{dmgNowOrCarry(3,h,'generic')}},
   ward:{label:'Chaos Ward · Guard +2',run:(h)=>{shield(2,h)}},
 };
 const GENERIC_BY_RANK={J:['training','sprint','parry'],Q:['tactics','rally','scout'],K:['resolve','fortify','purge'],X:['spark','trick','ward']};
@@ -219,6 +233,7 @@ function setBoss(i){
   S.boss={rank:c.rank,suit:c.suit,name:d.name,hp:d.hp,max:d.hp,atk:d.atk,round:1,poi:0,jplus:false,x2:false};
   if(S.carry.dmg>0) applyDamage({amount:S.carry.dmg,by:null,tag:'carry'});
   if(S.carry.poi>0) S.boss.poi += S.carry.poi;
+  if(S.carry.dmg||S.carry.poi){ toast(`Carry-over → −${S.carry.dmg||0} DMG, +${S.carry.poi||0} POI`,'good'); logLine(`Carry-over applied: −${S.carry.dmg||0} HP, +${S.carry.poi||0} POI`); }
   S.carry={dmg:0,poi:0}; S.lastTarget=null; S.finisher=null; S.legendaryClaimed=false; S.genericTaken={A:false,B:false};
   for(const k of ['A','B']){ const h=S.heroes[k]; h.plays=CFG.BASE_PLAYS; h.playsMax=CFG.BASE_PLAYS; h.shield=0; drawUp(k); }
   renderAll();
@@ -424,7 +439,7 @@ $('heroes').addEventListener('change',(e)=>{
   if(!e.target.classList.contains('classSel')) return;
   const k=getHeroFromEl(e.target); if(!k) return;
   const h=heroObj(k); const r=h.hp/h.maxHP||1;
-  h.cls=e.target.value; h.maxHP=classMods[h.cls].maxHP; h.hp=clamp(Math.round(h.maxHP+r*0),0,h.maxHP);
+  h.cls=e.target.value; h.maxHP=classMods[h.cls].maxHP; h.hp=clamp(Math.round(h.maxHP*r),0,h.maxHP);
   renderHeroes();
 });
 
